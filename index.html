@@ -2,76 +2,119 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Maranui SLSC – Lyall Bay Webcam</title>
-  <meta name="theme-color" content="#C8102E" />
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Maranui Webcam">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maranui SLSC – Surf & Airport Live</title>
+  <meta name="theme-color" content="#e63946" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js + time adapter -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" defer></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
   <header class="site-header">
-    <div class="header-inner">
-      <img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C." class="logo-script" />
-      <img src="assets/logos/maranui-wings.jpg" alt="" aria-hidden="true" class="logo-wings-watermark" />
+    <div class="logo-row">
+      <img src="assets/maranui.svg" alt="Maranui SLSC logo" class="logo">
+      <img src="assets/slsnz.svg" alt="Surf Life Saving NZ logo" class="logo">
+      <img src="assets/sponsor.svg" alt="Sponsor logo" class="logo">
     </div>
-    <div class="accent-line"></div>
+    <h1 class="site-title">Maranui Surf Life Saving Club – Live Surf & Airport Cams</h1>
   </header>
 
-  <main>
-    <section class="player-wrap" id="playerWrap" aria-label="Live beach webcam">
-      <!-- Enlarged, repeating winged-M overlay bands (top & bottom) -->
-      <div class="overlay top"></div>
-      <div class="overlay bottom"></div>
+  <main class="content">
+    <!-- Camera Section -->
+    <section class="camera-section">
+      <div class="cam">
+        <div class="bars top-bar">
+          <div class="marquee">
+            <img src="assets/maranui.svg" alt="" />
+            <img src="assets/slsnz.svg" alt="" />
+            <img src="assets/sponsor.svg" alt="" />
+            <img src="assets/maranui.svg" alt="" />
+            <img src="assets/slsnz.svg" alt="" />
+            <img src="assets/sponsor.svg" alt="" />
+          </div>
+        </div>
 
-      <div class="ratio">
-        <iframe
-          id="ytFrame"
-          title="Maranui Lyall Bay Live"
-          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0"
+        <iframe id="liveFrame"
+          title="Live Camera"
+          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
+          frameborder="0"
           allow="autoplay; encrypted-media; picture-in-picture"
           allowfullscreen
-          referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        ></iframe>
+
+        <div class="bars bottom-bar">
+          <div class="marquee">
+            <img src="assets/maranui.svg" alt="" />
+            <img src="assets/slsnz.svg" alt="" />
+            <img src="assets/sponsor.svg" alt="" />
+            <img src="assets/maranui.svg" alt="" />
+            <img src="assets/slsnz.svg" alt="" />
+            <img src="assets/sponsor.svg" alt="" />
+          </div>
+        </div>
+      </div>
+
+      <div class="switch-row">
+        <button id="camSwitch" class="switch switch--surf" aria-pressed="true" aria-label="Toggle camera">
+          Surf
+          <span class="divider">/</span>
+          <span class="alt">Airport</span>
+        </button>
       </div>
     </section>
 
-    <section class="conditions" id="conditionsPanel">
-      <h2>Current Conditions – Lyall Bay</h2>
-      <div id="snapshot">Loading live data…</div>
-      <div id="tideExtras"></div>
-      <div id="updated" class="updated"></div>
-      <div class="table-wrap">
-        <table id="hourlyTable" aria-label="Hourly surf conditions">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Tide (↑/↓)</th>
-              <th>Height (m)</th>
-              <th>Wind (km/h)</th>
-              <th>Dir</th>
-              <th>Waves (m)</th>
-              <th>Period (s)</th>
-              <th>Optimal</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+    <!-- Conditions Dashboard -->
+    <section class="conditions">
+      <div class="conditions-header">
+        <h2 class="panel-title">Today’s Conditions – Lyall Bay</h2>
+        <div class="meta">
+          <span id="dateLabel">—</span>
+          <span id="sunriseLabel">☀️ Sunrise: —</span>
+          <span id="sunsetLabel">🌇 Sunset: —</span>
+        </div>
       </div>
+
+      <div class="score-row">
+        <div class="score-badge" id="scoreBadge">—</div>
+        <div class="score-detail" id="scoreDetail">Calculating surfability…</div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Wave Height (m)</h3>
+          <canvas id="waveChart" height="200"></canvas>
+          <div class="subline"><span id="waveMeta">Period — s · Dir —</span></div>
+        </div>
+        <div class="chart-card">
+          <h3>Wind Speed (km/h)</h3>
+          <canvas id="windChart" height="200"></canvas>
+          <div class="subline">
+            Gusts shown. Direction: <span id="windDirText">—</span>
+            <span id="windArrow" class="arrow" title="Wind direction arrow">➤</span>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Rain (mm/hr)</h3>
+          <canvas id="rainChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="tides">
+        <div class="tide-chip">Next High: <strong id="tideHigh">—</strong></div>
+        <div class="tide-chip">Next Low: <strong id="tideLow">—</strong></div>
+        <a class="tide-link" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener">MetService Wellington tides ↗</a>
+      </div>
+
+      <p class="panel-note">
+        Data: Open‑Meteo marine & forecast (hourly, metric). Updates every 30 minutes.
+      </p>
     </section>
   </main>
 
   <footer class="site-footer">
-    <div class="footer-logos">
-      <img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C.">
-      <img src="assets/logos/maranui-cap.jpg" alt="Surf cap">
-      <img src="assets/logos/maranui-wings.jpg" alt="Wings emblem">
-    </div>
-    <p>Unofficial viewer for Maranui SLSC • Built for Andrew • © 2025</p>
+    <p>© <span id="year"></span> Maranui Surf Life Saving Club. Personal non‑official project.</p>
   </footer>
-
-  <script src="script.js"></script>
 </body>
 </html>
