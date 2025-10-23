@@ -2,51 +2,107 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Maranui SLSC – Lyall Bay Webcam</title>
-  <meta name="theme-color" content="#C8102E" />
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Maranui Webcam">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maranui SLSC – Live Surf Cams</title>
+  <meta name="theme-color" content="#e63946" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preload" href="script.js" as="script">
 </head>
 <body>
   <header class="site-header">
-    <div class="header-inner">
-      <img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C." class="logo-script" />
-      <img src="assets/logos/maranui-wings.jpg" alt="" aria-hidden="true" class="logo-wings-watermark" />
+    <div class="logo-row">
+      <img src="assets/maranui.svg" alt="Maranui SLSC logo" class="logo">
+      <img src="assets/slsnz.svg" alt="Surf Life Saving NZ logo" class="logo">
+      <img src="assets/sponsor.svg" alt="Sponsor logo" class="logo">
     </div>
-    <div class="accent-line"></div>
+    <h1 class="site-title">Maranui Surf Life Saving Club – Live Surf Cams</h1>
   </header>
 
-  <main>
-    <section class="player-wrap" id="playerWrap" aria-label="Live beach webcam">
-      <div class="overlay top"><img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C."></div>
-      <div class="overlay bottom"><img src="assets/logos/maranui-wings.jpg" alt="Maranui emblem"></div>
-      <div class="ratio">
-        <iframe id="ytFrame" title="Maranui Lyall Bay Live"
-          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0"
-          allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <main class="content">
+    <!-- Tabs -->
+    <div class="tab-container">
+      <div class="tab-buttons">
+        <button class="tab-btn active" data-tab="maranui">🏖️ Maranui Cam</button>
+        <button class="tab-btn" data-tab="lyallbay">🌊 Lyall Bay Cam</button>
       </div>
-    </section>
 
-    <section class="conditions" id="conditionsPanel">
-      <h2>Current Conditions – Lyall Bay</h2>
-      <div id="conditionsContent">Loading live data…</div>
-      <div id="conditionsUpdated" class="updated"></div>
-      <details class="source-note"><summary>Data sources</summary><p>Wind & waves: Open‑Meteo • Tide heights: WorldTides (demo)</p></details>
+      <!-- Tab: Maranui -->
+      <section class="tab-content active" id="maranui" aria-label="Maranui Camera">
+        <div class="cam">
+          <div class="bars top-bar"></div>
+          <iframe
+            title="Maranui Live Cam"
+            src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
+            frameborder="0"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+          <div class="bars bottom-bar"></div>
+        </div>
+      </section>
+
+      <!-- Tab: Lyall Bay -->
+      <section class="tab-content" id="lyallbay" aria-label="Lyall Bay Camera">
+        <div class="cam">
+          <div class="bars top-bar"></div>
+          <iframe
+            title="Lyall Bay Live Cam"
+            src="https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0"
+            frameborder="0"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+          <div class="bars bottom-bar"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Conditions Panel (Text-based; Open-Meteo) -->
+    <section class="conditions">
+      <h2 class="panel-title">Conditions – Lyall Bay (Metric)</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="icon" aria-hidden="true">
+            <!-- wind icon -->
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M4 10h10a3 3 0 1 0-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="card-body">
+            <div class="label">Wind</div>
+            <div class="value"><span id="windSpeed">–</span> km/h <span id="windDirText"></span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="icon" aria-hidden="true">
+            <!-- waves icon -->
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M3 16c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="card-body">
+            <div class="label">Significant Wave Height</div>
+            <div class="value"><span id="waveHeight">–</span> m</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="icon" aria-hidden="true">
+            <!-- tide icon -->
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M4 15h16M6 11c1.5-2 4-3 6-3s4.5 1 6 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="card-body">
+            <div class="label">Tide</div>
+            <div class="value">
+              <span id="tideStatus">Use link</span>
+              <a id="tideLink" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener" class="tide-link">Local tide times ↗</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="panel-note">Wind & waves via Open‑Meteo. Tide via local link. Update interval: 30 min.</p>
     </section>
   </main>
 
   <footer class="site-footer">
-    <div class="footer-logos">
-      <img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C.">
-      <img src="assets/logos/maranui-cap.jpg" alt="Surf cap">
-      <img src="assets/logos/maranui-wings.jpg" alt="Wings emblem">
-    </div>
-    <p>Unofficial viewer for Maranui SLSC • Built for Andrew • © 2025</p>
+    <p>© <span id="year"></span> Maranui Surf Life Saving Club. Non‑official fan project for personal use.</p>
   </footer>
 
   <script src="script.js"></script>

@@ -1,44 +1,74 @@
-// Metric conditions with icons + timestamp
-const lat=-41.327, lon=174.818;
-const content=document.getElementById('conditionsContent');
-const updated=document.getElementById('conditionsUpdated');
-const kmh=ms=>Math.round(ms*3.6);
-const fmtTime=d=>d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-function dirText(deg){const d=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];return d[Math.round(((deg%360)/22.5))%16];}
+// Tabs
+const buttons = document.querySelectorAll('.tab-btn');
+const contents = document.querySelectorAll('.tab-content');
+buttons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    buttons.forEach(b=>b.classList.remove('active'));
+    contents.forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
 
-async function fetchConditions(){
+// Footer year
+document.getElementById('year').textContent = new Date().getFullYear();
+
+// === Conditions Panel (Open-Meteo) ===
+// Lyall Bay approx coordinates
+const LAT = -41.327; 
+const LON = 174.794;
+
+// Wind (Open-Meteo forecast endpoint) - hourly wind
+async function fetchWind(){
   try{
-    const meteoUrl=`https://api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wind_speed,wind_direction&timezone=auto`;
-    const meteo=await fetch(meteoUrl).then(r=>r.json());
-    const i=0;
-    const wh=meteo.hourly.wave_height[i];
-    const wp=Math.round(meteo.hourly.wave_period[i]);
-    const ws=kmh(meteo.hourly.wind_speed[i]);
-    const wd=dirText(meteo.hourly.wind_direction[i]);
-
-    let tideStr='🌊 Tide: data unavailable';
-    try{
-      const t=await fetch(`https://www.worldtides.info/api/v2?heights&lat=${lat}&lon=${lon}&length=86400&key=demo`).then(r=>r.json());
-      if(t&&t.heights&&t.heights.length){
-        const nearest=t.heights[0];
-        tideStr=`🌊 Tide: ${nearest.height.toFixed(1)} m @ ${fmtTime(new Date(nearest.dt*1000))}`;
-      }
-    }catch{}
-
-    content.textContent=[
-      tideStr,
-      `💨 Wind: ${wd} ${ws} km/h`,
-      `🌡️ Waves: ${wh.toFixed(1)} m @ ${wp} s`
-    ].join('\n');
-    updated.textContent='Updated: '+new Date().toLocaleString();
-    localStorage.setItem('maranui-conditions-text',content.textContent);
-    localStorage.setItem('maranui-conditions-updated',updated.textContent);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_direction_10m&windspeed_unit=kmh&timezone=auto`;
+    const r = await fetch(url);
+    const j = await r.json();
+    const idx = nearestHourIndex(j.hourly.time);
+    const speed = j.hourly.wind_speed_10m?.[idx];
+    const dir = j.hourly.wind_direction_10m?.[idx];
+    document.getElementById('windSpeed').textContent = speed != null ? Math.round(speed) : '–';
+    document.getElementById('windDirText').textContent = dir != null ? `(${degToCompass(dir)})` : '';
   }catch(e){
-    content.textContent=localStorage.getItem('maranui-conditions-text')||'Offline – last data unavailable';
-    updated.textContent=localStorage.getItem('maranui-conditions-updated')||'';
+    console.warn('Wind fetch error', e);
   }
 }
-fetchConditions();
-setInterval(fetchConditions,30*60*1000);
 
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
+// Waves (Open-Meteo marine endpoint) - hourly waves
+async function fetchWaves(){
+  try{
+    const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height&timezone=auto`;
+    const r = await fetch(url);
+    const j = await r.json();
+    const idx = nearestHourIndex(j.hourly.time);
+    const h = j.hourly.wave_height?.[idx];
+    document.getElementById('waveHeight').textContent = h != null ? h.toFixed(1) : '–';
+  }catch(e){
+    console.warn('Waves fetch error', e);
+  }
+}
+
+function nearestHourIndex(times){
+  if(!times || !times.length) return 0;
+  const now = new Date();
+  let bestIdx = 0, bestDiff = Infinity;
+  for (let i=0;i<times.length;i++){
+    const d = new Date(times[i]);
+    const diff = Math.abs(d - now);
+    if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+function degToCompass(num){
+  const val = Math.floor((num/22.5)+0.5);
+  const arr = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return arr[(val % 16)];
+}
+
+function updateAll(){
+  fetchWind();
+  fetchWaves();
+}
+updateAll();
+setInterval(updateAll, 30 * 60 * 1000); // every 30 minutes
