@@ -15,50 +15,38 @@
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <img src="assets/logos/maranui-script.png" alt="Maranui S.L.S.C." class="logo-script" />
-      <img src="assets/logos/maranui-wings.png" alt="" aria-hidden="true" class="logo-wings-watermark" />
-      <nav class="actions">
-        <button id="btn-play" class="btn primary" aria-label="Play stream">▶ Play</button>
-        <button id="btn-open" class="btn" aria-label="Open on YouTube">Open in YouTube</button>
-        <button id="btn-full" class="btn" aria-label="Fullscreen">⛶</button>
-      </nav>
+      <img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C." class="logo-script" />
+      <img src="assets/logos/maranui-wings.jpg" alt="" aria-hidden="true" class="logo-wings-watermark" />
     </div>
     <div class="accent-line"></div>
   </header>
 
   <main>
     <section class="player-wrap" id="playerWrap" aria-label="Live beach webcam">
-      <div class="cap-bg"></div>
-      <div class="poster" id="poster" role="button" tabindex="0" aria-label="Tap to start the live stream">
-        <div class="poster-badge">LIVE</div>
-        <div class="poster-title">Lyall Bay • Maranui SLSC</div>
-        <div class="poster-hint">Tap ▶ Play (iOS requires user interaction)</div>
-      </div>
+      <div class="overlay top"><img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C."></div>
+      <div class="overlay bottom"><img src="assets/logos/maranui-wings.jpg" alt="Maranui emblem"></div>
       <div class="ratio">
-        <iframe
-          id="ytFrame"
-          title="Maranui Lyall Bay Live"
-          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=0&mute=1&playsinline=1&modestbranding=1&rel=0&enablejsapi=1"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowfullscreen
-          referrerpolicy="strict-origin-when-cross-origin"
-          loading="lazy"></iframe>
+        <iframe id="ytFrame" title="Maranui Lyall Bay Live"
+          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0"
+          allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
       </div>
     </section>
 
-    <section class="info">
-      <h2>Conditions</h2>
-      <p>Keep an eye on Lyall Bay conditions. Red - yellow is our theme: stay between the flags. This lightweight site installs to your iPhone/iPad (Add to Home Screen) and opens the stream in-app.</p>
+    <section class="conditions" id="conditionsPanel">
+      <h2>Current Conditions – Lyall Bay</h2>
+      <div id="conditionsContent">Loading live data…</div>
+      <div id="conditionsUpdated" class="updated"></div>
+      <details class="source-note"><summary>Data sources</summary><p>Wind & waves: Open‑Meteo • Tide heights: WorldTides (demo)</p></details>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="footer-logos">
-      <img src="assets/logos/maranui-script.png" alt="Maranui S.L.S.C. logo">
-      <img src="assets/logos/maranui-cap.png" alt="Maranui surf cap design">
-      <img src="assets/logos/maranui-wings.png" alt="Winged lifesaver emblem">
+      <img src="assets/logos/maranui-script.jpg" alt="Maranui S.L.S.C.">
+      <img src="assets/logos/maranui-cap.jpg" alt="Surf cap">
+      <img src="assets/logos/maranui-wings.jpg" alt="Wings emblem">
     </div>
-    <p>Unofficial fan-made viewer for Maranui SLSC • Built for Andrew • © 2025</p>
+    <p>Unofficial viewer for Maranui SLSC • Built for Andrew • © 2025</p>
   </footer>
 
   <script src="script.js"></script>
