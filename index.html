@@ -3,39 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui SLSC – Surf & Airport Live</title>
+  <title>Maranui SLSC – Surf & Airport Live (v6)</title>
   <meta name="theme-color" content="#e63946" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Chart.js + time adapter -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" defer></script>
-  <script src="script.js" defer></script>
+  <script defer src="script.js"></script>
 </head>
 <body>
   <header class="site-header">
     <div class="logo-row">
-      <img src="assets/maranui.svg" alt="Maranui SLSC logo" class="logo">
-      <img src="assets/slsnz.svg" alt="Surf Life Saving NZ logo" class="logo">
-      <img src="assets/sponsor.svg" alt="Sponsor logo" class="logo">
+      <img src="assets/maranui-wing-band.png" class="header-logo" alt="Maranui SLSC wing logo">
+      <h1 class="site-title">Maranui Surf Life Saving Club – Live Surf & Airport Cams</h1>
     </div>
-    <h1 class="site-title">Maranui Surf Life Saving Club – Live Surf & Airport Cams</h1>
   </header>
 
   <main class="content">
     <!-- Camera Section -->
     <section class="camera-section">
       <div class="cam">
-        <div class="bars top-bar">
-          <div class="marquee">
-            <img src="assets/maranui.svg" alt="" />
-            <img src="assets/slsnz.svg" alt="" />
-            <img src="assets/sponsor.svg" alt="" />
-            <img src="assets/maranui.svg" alt="" />
-            <img src="assets/slsnz.svg" alt="" />
-            <img src="assets/sponsor.svg" alt="" />
+        <!-- Top wing banner (animated) -->
+        <div class="wing-banner top" aria-hidden="true">
+          <div class="wing-track">
+            <img src="assets/maranui-wing-band.png" alt="">
+            <img src="assets/maranui-wing-band.png" alt="">
+            <img src="assets/maranui-wing-band.png" alt="">
+            <img src="assets/maranui-wing-band.png" alt="">
           </div>
         </div>
 
+        <!-- Iframe -->
         <iframe id="liveFrame"
           title="Live Camera"
           src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
@@ -44,71 +39,50 @@
           allowfullscreen
         ></iframe>
 
-        <div class="bars bottom-bar">
-          <div class="marquee">
-            <img src="assets/maranui.svg" alt="" />
-            <img src="assets/slsnz.svg" alt="" />
-            <img src="assets/sponsor.svg" alt="" />
-            <img src="assets/maranui.svg" alt="" />
-            <img src="assets/slsnz.svg" alt="" />
-            <img src="assets/sponsor.svg" alt="" />
+        <!-- Bottom wing banner (animated) -->
+        <div class="wing-banner bottom" aria-hidden="true">
+          <div class="wing-track">
+            <img src="assets/maranui-wing-band.png" alt="">
+            <img src="assets/maranui-wing-band.png" alt="">
+            <img src="assets/maranui-wing-band.png" alt="">
+            <img src="assets/maranui-wing-band.png" alt="">
           </div>
         </div>
       </div>
 
+      <!-- Surf / Airport switch -->
       <div class="switch-row">
         <button id="camSwitch" class="switch switch--surf" aria-pressed="true" aria-label="Toggle camera">
-          Surf
-          <span class="divider">/</span>
-          <span class="alt">Airport</span>
+          Surf <span class="divider">/</span> <span class="alt">Airport</span>
         </button>
       </div>
     </section>
 
-    <!-- Conditions Dashboard -->
+    <!-- Summary Panel -->
+    <section class="summary">
+      <div class="summary-row">
+        <div class="chip"><strong id="dateLabel">—</strong></div>
+        <div class="chip">☀️ Sunrise: <strong id="sunriseLabel">—</strong></div>
+        <div class="chip">🌇 Sunset: <strong id="sunsetLabel">—</strong></div>
+        <div class="chip">⬆️ High: <strong id="tideHigh">—</strong></div>
+        <div class="chip">⬇️ Low: <strong id="tideLow">—</strong></div>
+        <div class="chip score" id="scoreBadge">Surfability —</div>
+        <a class="chip link" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener">MetService Tides ↗</a>
+      </div>
+    </section>
+
+    <!-- 24h Conditions Table -->
     <section class="conditions">
-      <div class="conditions-header">
-        <h2 class="panel-title">Today’s Conditions – Lyall Bay</h2>
-        <div class="meta">
-          <span id="dateLabel">—</span>
-          <span id="sunriseLabel">☀️ Sunrise: —</span>
-          <span id="sunsetLabel">🌇 Sunset: —</span>
-        </div>
+      <h2 class="panel-title">24‑Hour Forecast – Lyall Bay (metric)</h2>
+      <div class="table-scroll">
+        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
       </div>
-
-      <div class="score-row">
-        <div class="score-badge" id="scoreBadge">—</div>
-        <div class="score-detail" id="scoreDetail">Calculating surfability…</div>
-      </div>
-
-      <div class="chart-grid">
-        <div class="chart-card">
-          <h3>Wave Height (m)</h3>
-          <canvas id="waveChart" height="200"></canvas>
-          <div class="subline"><span id="waveMeta">Period — s · Dir —</span></div>
-        </div>
-        <div class="chart-card">
-          <h3>Wind Speed (km/h)</h3>
-          <canvas id="windChart" height="200"></canvas>
-          <div class="subline">
-            Gusts shown. Direction: <span id="windDirText">—</span>
-            <span id="windArrow" class="arrow" title="Wind direction arrow">➤</span>
-          </div>
-        </div>
-        <div class="chart-card">
-          <h3>Rain (mm/hr)</h3>
-          <canvas id="rainChart" height="200"></canvas>
-        </div>
-      </div>
-
-      <div class="tides">
-        <div class="tide-chip">Next High: <strong id="tideHigh">—</strong></div>
-        <div class="tide-chip">Next Low: <strong id="tideLow">—</strong></div>
-        <a class="tide-link" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener">MetService Wellington tides ↗</a>
-      </div>
-
-      <p class="panel-note">
-        Data: Open‑Meteo marine & forecast (hourly, metric). Updates every 30 minutes.
+      <p id="tableHelp" class="panel-note">
+        Each column is an hour. Rows show wave height, wave period, wind speed, gusts, direction, rain, tide height, and surfability. 
+        Night hours are shaded. Auto‑refresh every 30 minutes.
       </p>
     </section>
   </main>

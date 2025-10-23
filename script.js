@@ -1,6 +1,6 @@
-// ===== v5 Logic: Surf/Airport switch, animated bars, charts, gusts, directions, tides =====
+// ===== v6 Logic: Wing banners, Surf/Airport switch, 24h table, night shading, surfability =====
 
-// Footer year
+// Year
 document.getElementById('year').textContent = new Date().getFullYear();
 
 // Location: Lyall Bay approx
@@ -8,7 +8,7 @@ const LAT = -41.327, LON = 174.794;
 
 // Camera URLs
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0";
-const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0"; // from your link
+const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0"; // airport stream
 
 // Switch behaviour
 const frame = document.getElementById('liveFrame');
@@ -16,7 +16,6 @@ const switchBtn = document.getElementById('camSwitch');
 let showingSurf = true;
 switchBtn.addEventListener('click', ()=>{
   showingSurf = !showingSurf;
-  // fade
   frame.style.opacity = '0';
   setTimeout(()=>{
     frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
@@ -25,7 +24,7 @@ switchBtn.addEventListener('click', ()=>{
     switchBtn.setAttribute('aria-pressed', String(showingSurf));
     switchBtn.innerHTML = showingSurf ? "Surf <span class='divider'>/</span> <span class='alt'>Airport</span>" : "Airport <span class='divider'>/</span> <span class='alt'>Surf</span>";
     frame.style.opacity = '1';
-  }, 200);
+  }, 180);
 });
 
 // Date label
@@ -35,25 +34,8 @@ function todayLabel(){
 }
 document.getElementById('dateLabel').textContent = todayLabel();
 
-// Night shading plugin
-const NightShade = (ranges)=>({
-  id: 'nightShade',
-  beforeDraw(chart,args,opts){
-    const {ctx, chartArea:{top,bottom}, scales:{x}} = chart;
-    if(!x) return;
-    ctx.save();
-    ctx.fillStyle = 'rgba(6,7,20,0.15)';
-    ranges.forEach(r=>{
-      const xStart = x.getPixelForValue(r.start);
-      const xEnd = x.getPixelForValue(r.end);
-      ctx.fillRect(xStart, top, xEnd - xStart, bottom - top);
-    });
-    ctx.restore();
-  }
-});
-
-// Data fetch (Open-Meteo Forecast + Marine)
-async function getData(){
+// Fetch Open-Meteo
+async function fetchData(){
   const now = new Date();
   const baseHour = new Date(now); baseHour.setMinutes(0,0,0);
 
@@ -61,92 +43,67 @@ async function getData(){
 
   const forecastURL = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`;
   const marineURL   = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`;
+  const tideURL     = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
 
-  const [fRes, mRes] = await Promise.all([fetch(forecastURL), fetch(marineURL)]);
-  const [f, m] = await Promise.all([fRes.json(), mRes.json()]);
+  const [fRes, mRes, tRes] = await Promise.all([fetch(forecastURL), fetch(marineURL), fetch(tideURL)]);
+  const [f, m, t] = await Promise.all([fRes.json(), mRes.json(), tRes.json()]);
 
+  // Index maps
   const idxF = Object.fromEntries((f.hourly.time||[]).map((t,i)=>[t,i]));
   const idxM = Object.fromEntries((m.hourly.time||[]).map((t,i)=>[t,i]));
+  const idxT = Object.fromEntries((t.hourly?.time||[]).map((tt,i)=>[tt,i]));
   const toISOhr = d => new Date(d).toISOString().slice(0,13)+":00";
 
-  const labels = [], wind=[], gusts=[], windDir=[], rain=[], wave=[], wavePeriod=[], waveDir=[];
+  // Build arrays
+  const labelHours = [], wind=[], gusts=[], windDir=[], rain=[], wave=[], waveP=[], waveD=[], tide=[];
   hours.forEach(h=>{
     const iso = toISOhr(h);
-    const iF = idxF[iso]; const iM = idxM[iso];
-    labels.push(h);
-    wind.push(iF!=null ? f.hourly.wind_speed_10m[iF] : null);
-    gusts.push(iF!=null ? f.hourly.wind_gusts_10m?.[iF] ?? null : null);
-    windDir.push(iF!=null ? f.hourly.wind_direction_10m[iF] : null);
-    rain.push(iF!=null ? f.hourly.precipitation[iF] : null);
-    wave.push(iM!=null ? m.hourly.wave_height[iM] : null);
-    wavePeriod.push(iM!=null ? m.hourly.wave_period[iM] : null);
-    waveDir.push(iM!=null ? m.hourly.wave_direction[iM] : null);
+    const iF = idxF[iso], iM = idxM[iso], iT = idxT[iso];
+    labelHours.push(h);
+    wind.push(iF!=null? f.hourly.wind_speed_10m[iF] : null);
+    gusts.push(iF!=null? f.hourly.wind_gusts_10m?.[iF] ?? null : null);
+    windDir.push(iF!=null? f.hourly.wind_direction_10m[iF] : null);
+    rain.push(iF!=null? f.hourly.precipitation[iF] : null);
+    wave.push(iM!=null? m.hourly.wave_height[iM] : null);
+    waveP.push(iM!=null? m.hourly.wave_period[iM] : null);
+    waveD.push(iM!=null? m.hourly.wave_direction[iM] : null);
+    tide.push(iT!=null? t.hourly.tide_height[iT] : null);
   });
 
-  // Sunrise/sunset for night shading
+  // Sunrise/sunset
   const sunrise0 = new Date(f.daily.sunrise[0]);
   const sunset0  = new Date(f.daily.sunset[0]);
   const sunrise1 = f.daily.sunrise[1] ? new Date(f.daily.sunrise[1]) : null;
 
-  const start = hours[0], end = hours[hours.length-1];
-  const ranges = [];
-  if(start < sunrise0) ranges.push({start, end: sunrise0});
-  if(sunset0 < end){
-    ranges.push({start: sunset0, end: sunrise1 && sunrise1 < end ? sunrise1 : end});
-  }
+  document.getElementById('sunriseLabel').textContent = sunrise0.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('sunsetLabel').textContent  = sunset0.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-  document.getElementById('sunriseLabel').textContent = '☀️ Sunrise: ' + sunrise0.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  document.getElementById('sunsetLabel').textContent  = '🌇 Sunset: '  + sunset0.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  // Next high/low tides
+  try{
+    const times = t.hourly?.time||[];
+    const heights = t.hourly?.tide_height||[];
+    const nowD = new Date();
+    let nextHigh=null, nextLow=null;
+    for(let i=1;i<heights.length-1;i++){
+      const prev=heights[i-1], cur=heights[i], nxt=heights[i+1];
+      const tt=new Date(times[i]);
+      if(tt<=nowD) continue;
+      if(cur>prev && cur>nxt && !nextHigh) nextHigh=tt;
+      if(cur<prev && cur<nxt && !nextLow) nextLow=tt;
+      if(nextHigh && nextLow) break;
+    }
+    if(nextHigh) document.getElementById('tideHigh').textContent = nextHigh.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    if(nextLow)  document.getElementById('tideLow').textContent  = nextLow.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }catch(e){ /* ignore */ }
 
-  return {labels, wind, gusts, windDir, rain, wave, wavePeriod, waveDir, ranges};
-}
+  // Night shading set
+  const nightCols = new Set();
+  labelHours.forEach((h, idx)=>{
+    if(h < sunrise0 || h >= sunset0) nightCols.add(idx);
+    if(sunset0 < labelHours[0] && sunrise1 && h < sunrise1) nightCols.add(idx);
+  });
 
-// Charts
-let waveChart, windChart, rainChart;
-
-function buildCharts(d){
-  const {labels, wave, wind, rain, ranges, gusts} = d;
-  const common = {
-    type:'line',
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      interaction:{mode:'index', intersect:false},
-      scales:{ x:{type:'time', time:{unit:'hour', displayFormats:{hour:'HH:mm'}}}, y:{beginAtZero:true}},
-      plugins:{ legend:{display:true}, tooltip:{ callbacks:{ title:(items)=> items[0]?.label ? new Date(items[0].label).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '' } } }
-    },
-    plugins:[NightShade(ranges)]
-  };
-
-  // Wave
-  const waveCfg = JSON.parse(JSON.stringify(common));
-  waveCfg.data = { labels, datasets:[{label:'Wave Height (m)', data:wave, tension:.3, borderWidth:2}] };
-  waveChart = new Chart(document.getElementById('waveChart').getContext('2d'), waveCfg);
-
-  // Wind (with gusts)
-  const windCfg = JSON.parse(JSON.stringify(common));
-  windCfg.data = { labels, datasets:[
-    {label:'Wind Speed (km/h)', data:wind, tension:.3, borderWidth:2},
-    {label:'Gusts (km/h)', data:gusts, tension:.3, borderWidth:2, borderDash:[6,4]}
-  ]};
-  windChart = new Chart(document.getElementById('windChart').getContext('2d'), windCfg);
-
-  // Rain
-  const rainCfg = JSON.parse(JSON.stringify(common));
-  rainCfg.data = { labels, datasets:[{label:'Rain (mm/hr)', data:rain, stepped:true, borderWidth:2, tension:.3}] };
-  rainChart = new Chart(document.getElementById('rainChart').getContext('2d'), rainCfg);
-}
-
-function updateCharts(d){
-  [waveChart, windChart, rainChart].forEach(c=>{ c.data.labels = d.labels; });
-  waveChart.data.datasets[0].data = d.wave;
-  windChart.data.datasets[0].data = d.wind;
-  windChart.data.datasets[1].data = d.gusts;
-  rainChart.data.datasets[0].data = d.rain;
-  waveChart.config.plugins = [NightShade(d.ranges)];
-  windChart.config.plugins = [NightShade(d.ranges)];
-  rainChart.config.plugins = [NightShade(d.ranges)];
-  waveChart.update(); windChart.update(); rainChart.update();
+  return {labelHours, wind, gusts, windDir, rain, wave, waveP, waveD, tide, nightCols};
 }
 
 // Helpers
@@ -155,82 +112,111 @@ function degToCompass(num){
   return arr[Math.round(num/22.5) % 16];
 }
 
-// Surfability score 1–10
-function computeScore(d){
-  const n=12;
-  const avg = (arr)=>{ const s=arr.slice(0,n).filter(v=>v!=null); return s.length? s.reduce((a,b)=>a+b,0)/s.length : null; };
-  const avgWave=avg(d.wave), avgWind=avg(d.wind), avgRain=avg(d.rain);
-  let score=0;
-  if(avgWave!=null){ const diff=Math.abs(avgWave-1.15); score += Math.max(0, Math.min(4, 4-(diff/0.35)*4)); }
-  if(avgWind!=null){ score += avgWind<=10?3:avgWind<=18?2.5:avgWind<=25?2:avgWind<=35?1:0; }
-  if(avgRain!=null){ score += avgRain<0.2?2:avgRain<1?1:0; }
-  const d0=d.windDir?.[0]; if(typeof d0==='number'){ if(d0>=285&&d0<=325) score+=1; else if((d0>=260&&d0<285)||(d0>325&&d0<=340)) score+=0.5; }
-  return Math.max(0, Math.min(10, +score.toFixed(1)));
-}
-
-function applyScore(score){
-  const badge = document.getElementById('scoreBadge');
-  const detail = document.getElementById('scoreDetail');
-  let cls='--fair', label='FAIR', emoji='🟡';
-  if(score>=8){cls='--good'; label='GOOD'; emoji='🟢';}
-  else if(score<5){cls='--poor'; label='POOR'; emoji='🔴';}
-  badge.textContent = `${emoji} ${label} ${score}/10`;
-  badge.className = 'score-badge ' + cls;
-  detail.textContent = `Surfability today: ${label}.`;
-}
-const style = document.createElement('style');
-style.textContent = `.score-badge.--good{background:var(--good)} .score-badge.--fair{background:var(--fair)} .score-badge.--poor{background:var(--poor)}`;
-document.head.appendChild(style);
-
-// Update meta lines (wave period/direction, wind direction + arrow)
-function updateMeta(d){
-  const wP = d.wavePeriod?.[0], wD = d.waveDir?.[0];
-  const txt = `Period ${wP!=null? wP.toFixed(0):'—'} s · Dir ${wD!=null? degToCompass(wD):'—'}`;
-  document.getElementById('waveMeta').textContent = txt;
-
-  const dir = d.windDir?.[0];
+// Surfability score (per-hour)
+function hourlyScore(wave, wind, rain, dir){
+  let s=0;
+  if(wave!=null){
+    const diff = Math.abs(wave - 1.15);
+    s += Math.max(0, Math.min(4, 4 - (diff/0.35)*4));
+  }
+  if(wind!=null){
+    s += wind<=10?3:wind<=18?2.5:wind<=25?2:wind<=35?1:0;
+  }
+  if(rain!=null){
+    s += rain<0.2?2:rain<1?1:0;
+  }
   if(typeof dir==='number'){
-    document.getElementById('windDirText').textContent = degToCompass(dir);
-    document.getElementById('windArrow').style.transform = `rotate(${dir}deg)`;
+    if(dir>=285&&dir<=325) s+=1; else if((dir>=260&&dir<285)||(dir>325&&dir<=340)) s+=0.5;
+  }
+  return Math.max(0, Math.min(10, +s.toFixed(1)));
+}
+
+// Build table
+function buildTable(d){
+  const thead = document.getElementById('thead');
+  const tbody = document.getElementById('tbody');
+  thead.innerHTML = ''; tbody.innerHTML='';
+
+  const trH = document.createElement('tr');
+  const th0 = document.createElement('th'); th0.textContent = 'Metric'; trH.appendChild(th0);
+  d.labelHours.forEach((h, idx)=>{
+    const th = document.createElement('th');
+    th.textContent = h.toLocaleTimeString([], {hour:'2-digit'});
+    if(d.nightCols.has(idx)) th.classList.add('night');
+    trH.appendChild(th);
+  });
+  thead.appendChild(trH);
+
+  function addRow(label, values, formatter, scaleClassFn){
+    const tr = document.createElement('tr');
+    const th = document.createElement('th'); th.textContent = label; tr.appendChild(th);
+    values.forEach((v, idx)=>{
+      const td = document.createElement('td');
+      let txt = (formatter? formatter(v, idx): (v==null?'—':v));
+      if (typeof txt === 'string') td.innerHTML = txt; else td.textContent = txt;
+      if(d.nightCols.has(idx)) td.classList.add('night');
+      if(scaleClassFn){ const cls = scaleClassFn(v); if(cls) td.classList.add(cls); }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+
+  addRow('Wave (m)', d.wave, (v)=> v==null?'—':v.toFixed(1), (v)=>{
+    if(v==null) return '';
+    if(v<0.8) return 'scale-wave low';
+    if(v<1.8) return 'scale-wave ok';
+    if(v<2.5) return 'scale-wave high';
+    return 'scale-wave very';
+  });
+
+  addRow('Period (s)', d.waveP, (v)=> v==null?'—':v.toFixed(0));
+
+  addRow('Wind (km/h)', d.wind, (v)=> v==null?'—':Math.round(v), (v)=>{
+    if(v==null) return '';
+    if(v<15) return 'scale-wind low';
+    if(v<=25) return 'scale-wind med';
+    return 'scale-wind high';
+  });
+
+  addRow('Gusts (km/h)', d.gusts, (v)=> v==null?'—':Math.round(v));
+
+  addRow('Direction', d.windDir, (v)=> {
+    if(v==null) return '—';
+    const comp = degToCompass(v);
+    return comp + ' <span class="dir-arrow" style="transform:rotate(' + v + 'deg)">➤</span>';
+  });
+
+  addRow('Rain (mm/hr)', d.rain, (v)=> v==null?'—':v.toFixed(1));
+
+  addRow('Tide (m)', d.tide, (v)=> v==null?'—':v.toFixed(2));
+
+  const scores = d.labelHours.map((_,i)=> hourlyScore(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
+  addRow('Surfability (1–10)', scores, (v)=> v==null?'—':v.toFixed(1), (v)=>{
+    if(v==null) return '';
+    if(v>=8) return 'scale-surf good';
+    if(v>=5) return 'scale-surf fair';
+    return 'scale-surf poor';
+  });
+
+  const nowScore = scores[0];
+  const badge = document.getElementById('scoreBadge');
+  badge.textContent = `Surfability ${nowScore!=null? nowScore.toFixed(1):'—'}`;
+  badge.classList.remove('good','poor');
+  if(nowScore!=null){
+    if(nowScore>=8) badge.classList.add('good');
+    else if(nowScore<5) badge.classList.add('poor');
   }
 }
 
-// Tides best-effort via Open-Meteo tide (fallback is link)
-async function updateTides(){
+// Refresh cycle
+async function refresh(){
   try{
-    const url = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
-    const r = await fetch(url);
-    const j = await r.json();
-    const times = j?.hourly?.time || [];
-    const heights = j?.hourly?.tide_height || [];
-    if(!times.length) return;
-    const now = new Date();
-    let nextHigh=null, nextLow=null;
-    for(let i=1;i<heights.length-1;i++){
-      const prev=heights[i-1], cur=heights[i], nxt=heights[i+1];
-      const t=new Date(times[i]);
-      if(t<=now) continue;
-      if(cur>prev && cur>nxt && !nextHigh){ nextHigh=t; }
-      if(cur<prev && cur<nxt && !nextLow){ nextLow=t; }
-      if(nextHigh && nextLow) break;
-    }
-    if(nextHigh) document.getElementById('tideHigh').textContent = nextHigh.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    if(nextLow)  document.getElementById('tideLow').textContent  = nextLow.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  }catch(e){/* ignore */}
-}
-
-// Main updater
-async function updateAll(){
-  try{
-    const d = await getData();
-    if(!window._chartsBuilt){ buildCharts(d); window._chartsBuilt=true; } else { updateCharts(d); }
-    applyScore(computeScore(d));
-    updateMeta(d);
+    const d = await fetchData();
+    buildTable(d);
   }catch(e){
-    document.getElementById('scoreDetail').textContent = 'Could not fetch conditions. Check connection.';
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '<tr><td colspan="25">Could not fetch conditions. Check connection.</td></tr>';
   }
-  updateTides();
 }
-
-updateAll();
-setInterval(updateAll, 30*60*1000);
+refresh();
+setInterval(refresh, 30*60*1000);
