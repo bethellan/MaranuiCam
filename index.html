@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui SLSC – Surf & Airport Live (v6)</title>
+  <title>Maranui SLSC – Surf & Airport Live (v6.1)</title>
   <meta name="theme-color" content="#e63946" />
   <link rel="stylesheet" href="style.css" />
   <script defer src="script.js"></script>
@@ -20,17 +20,9 @@
     <!-- Camera Section -->
     <section class="camera-section">
       <div class="cam">
-        <!-- Top wing banner (animated) -->
-        <div class="wing-banner top" aria-hidden="true">
-          <div class="wing-track">
-            <img src="assets/maranui-wing-band.png" alt="">
-            <img src="assets/maranui-wing-band.png" alt="">
-            <img src="assets/maranui-wing-band.png" alt="">
-            <img src="assets/maranui-wing-band.png" alt="">
-          </div>
-        </div>
+        <!-- Seamless wing overlay bars -->
+        <div class="overlay top" aria-hidden="true"></div>
 
-        <!-- Iframe -->
         <iframe id="liveFrame"
           title="Live Camera"
           src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
@@ -39,15 +31,7 @@
           allowfullscreen
         ></iframe>
 
-        <!-- Bottom wing banner (animated) -->
-        <div class="wing-banner bottom" aria-hidden="true">
-          <div class="wing-track">
-            <img src="assets/maranui-wing-band.png" alt="">
-            <img src="assets/maranui-wing-band.png" alt="">
-            <img src="assets/maranui-wing-band.png" alt="">
-            <img src="assets/maranui-wing-band.png" alt="">
-          </div>
-        </div>
+        <div class="overlay bottom" aria-hidden="true"></div>
       </div>
 
       <!-- Surf / Airport switch -->

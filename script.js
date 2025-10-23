@@ -1,4 +1,4 @@
-// ===== v6 Logic: Wing banners, Surf/Airport switch, 24h table, night shading, surfability =====
+// ===== v6.1 Logic: Wing bars (repeat-x), Surf/Airport switch, 24h table, shading, surfability =====
 
 // Year
 document.getElementById('year').textContent = new Date().getFullYear();
@@ -8,7 +8,7 @@ const LAT = -41.327, LON = 174.794;
 
 // Camera URLs
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0";
-const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0"; // airport stream
+const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0";
 
 // Switch behaviour
 const frame = document.getElementById('liveFrame');
