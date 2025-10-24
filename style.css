@@ -32,7 +32,7 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   background-image:url('assets/maranui-wing-band.png');
   background-repeat: repeat-x;
   background-position: center;
-  background-size: 210px auto;
+  background-size: contain;
   box-shadow:0 2px 4px rgba(0,0,0,0.35) inset;
   animation: drift 60s linear infinite;
 }
