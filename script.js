@@ -1,4 +1,4 @@
-// ===== v6.2 Logic (solid red banners): Slim wing bars, robust table with fallback + status chip =====
+// ===== v6.3 Logic: Coloured sunrise/sunset icons, combined tide chip, fixed 24h table =====
 
 // Year
 document.getElementById('year').textContent = new Date().getFullYear();
@@ -220,6 +220,23 @@ function updateStatus(off){
   document.getElementById('updatedAt').textContent = "Updated " + ts;
 }
 
+// Tide highs/lows from tide series (best effort)
+function computeNextTides(times, heights){
+  try{
+    const now = new Date();
+    let nextHigh = null, nextLow = null;
+    for(let i=1; i<heights.length-1; i++){
+      const prev = heights[i-1], cur = heights[i], nxt = heights[i+1];
+      const tt = new Date(times[i]);
+      if(tt <= now) continue;
+      if(cur>prev && cur>nxt && !nextHigh) nextHigh = tt;
+      if(cur<prev && cur<nxt && !nextLow) nextLow = tt;
+      if(nextHigh && nextLow) break;
+    }
+    return {nextHigh, nextLow};
+  }catch(e){ return {nextHigh:null, nextLow:null}; }
+}
+
 // Main refresh
 async function refresh(){
   try{
@@ -227,20 +244,35 @@ async function refresh(){
     // Labels for sunrise/sunset
     document.getElementById('sunriseLabel').textContent = d.sunrise ? d.sunrise.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
     document.getElementById('sunsetLabel').textContent  = d.sunset  ? d.sunset.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})  : '—';
-    // Tide highs/lows best-effort (if offline, show friendly message)
-    if(d.offline){
-      document.getElementById('tideHigh').textContent = 'No data (check connection)';
-      document.getElementById('tideLow').textContent  = 'No data (check connection)';
+
+    // Next tides if live data and tide array exists
+    if(!d.offline){
+      try{
+        const tideURL = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
+        const tRes = await fetch(tideURL);
+        const t = await tRes.json();
+        const times = t.hourly?.time || [];
+        const heights = t.hourly?.tide_height || [];
+        const {{nextHigh, nextLow}} = computeNextTides(times, heights);
+        document.getElementById('tideHigh').textContent = nextHigh ? nextHigh.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+        document.getElementById('tideLow').textContent  = nextLow  ? nextLow.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})  : '—';
+      }catch(e){
+        document.getElementById('tideHigh').textContent = '—';
+        document.getElementById('tideLow').textContent  = '—';
+      }
+    }else{
+      document.getElementById('tideHigh').textContent = '—';
+      document.getElementById('tideLow').textContent  = '—';
     }
+
     buildTable(d);
     updateStatus(d.offline);
   }catch(e){
-    // Last-resort fallback: static sample
     const d = makeFallback();
     document.getElementById('sunriseLabel').textContent = d.sunrise.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     document.getElementById('sunsetLabel').textContent  = d.sunset.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    document.getElementById('tideHigh').textContent = 'No data (check connection)';
-    document.getElementById('tideLow').textContent  = 'No data (check connection)';
+    document.getElementById('tideHigh').textContent = '—';
+    document.getElementById('tideLow').textContent  = '—';
     buildTable(d);
     updateStatus(true);
   }

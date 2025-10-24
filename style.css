@@ -1,4 +1,4 @@
-/* ===== Maranui SLSC Theme (v6.2 – solid red wing bars) ===== */
+/* ===== Maranui SLSC Theme (v6.3) ===== */
 :root{
   --red:#e63946; --red-dark:#b82e38;
   --cream:#f1faee;
@@ -27,12 +27,12 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 .cam iframe{width:100%; height:100%; border:0; display:block; transition:opacity .2s ease}
 
 /* Seamless, continuous wing overlay bars (repeat-x) with SOLID red background */
-.overlay{position:absolute; left:0; width:100%; height:24px; z-index:3;
-  background-color: var(--red); /* solid brand red */
+.overlay{position:absolute; left:0; width:100%; height:28px; z-index:3;
+  background-color: var(--red);
   background-image:url('assets/maranui-wing-band.png');
   background-repeat: repeat-x;
   background-position: center;
-  background-size: contain; /* resized to fit slimmer bar */
+  background-size: 210px auto;
   box-shadow:0 2px 4px rgba(0,0,0,0.35) inset;
   animation: drift 60s linear infinite;
 }
@@ -53,9 +53,10 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 /* Summary chips */
 .summary{margin:8px 0 12px}
 .summary-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-.chip{background:#fff; border:1px solid #e6e6e6; border-radius:999px; padding:6px 10px; font-size:14px}
+.chip{background:#fff; border:1px solid #e6e6e6; border-radius:999px; padding:6px 10px; font-size:14px; display:flex; align-items:center; gap:6px}
 .chip.score{color:#fff; background:var(--fair); border-color:transparent; font-weight:800}
 .chip.link{background:#eef4ff; border-color:#d6e2ff}
+.chip.faint{opacity:.8}
 .good{background:var(--good)!important} .poor{background:var(--poor)!important}
 
 /* Conditions table */

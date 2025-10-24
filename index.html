@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui SLSC – Surf & Airport Live (v6.2)</title>
+  <title>Maranui SLSC – Surf & Airport Live (v6.3)</title>
   <meta name="theme-color" content="#e63946" />
-  <link rel="stylesheet" href="style.css" />
-  <script defer src="script.js"></script>
+  <link rel="stylesheet" href="style.css?v=3" />
+  <script defer src="script.js?v=3"></script>
 </head>
 <body>
   <header class="site-header">
@@ -42,18 +42,41 @@
       </div>
     </section>
 
-<button onclick="location.reload(true)">🔄 Refresh</button>
-    
     <!-- Summary Panel -->
     <section class="summary">
       <div class="summary-row">
-        <div class="chip"><strong id="dateLabel">—</strong></div>
-        <div class="chip">☀️ Sunrise: <strong id="sunriseLabel">—</strong></div>
-        <div class="chip">🌇 Sunset: <strong id="sunsetLabel">—</strong></div>
-        <div class="chip">⬆️ High: <strong id="tideHigh">—</strong></div>
-        <div class="chip">⬇️ Low: <strong id="tideLow">—</strong></div>
+        <div class="chip" title="Sunrise">
+          <!-- Gradient Sunrise SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <defs>
+              <linearGradient id="sunriseGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFD54F"/>
+                <stop offset="100%" stop-color="#FFA726"/>
+              </linearGradient>
+            </defs>
+            <path fill="url(#sunriseGradient)" d="M12 2L8 6h3v6h2V6h3l-4-4zM4 18a8 8 0 0116 0h2a10 10 0 00-20 0h2zm-2 2h20v2H2z"/>
+          </svg>
+          <strong id="sunriseLabel">—</strong>
+        </div>
+        <div class="chip" title="Sunset">
+          <!-- Gradient Sunset SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <defs>
+              <linearGradient id="sunsetGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFB300"/>
+                <stop offset="100%" stop-color="#F57C00"/>
+              </linearGradient>
+            </defs>
+            <path fill="url(#sunsetGradient)" d="M12 22l4-4h-3v-6h-2v6H8l4 4zM4 18a8 8 0 0116 0h2a10 10 0 00-20 0h2zm-2 2h20v2H2z"/>
+          </svg>
+          <strong id="sunsetLabel">—</strong>
+        </div>
+        <div class="chip">
+          🌊 <strong id="tideHigh">—</strong> / <strong id="tideLow">—</strong>
+        </div>
         <div class="chip score" id="scoreBadge">Surfability —</div>
         <a class="chip link" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener">MetService Tides ↗</a>
+        <div class="chip faint" id="dateLabel">—</div>
       </div>
     </section>
 
@@ -71,7 +94,7 @@
         <span id="updatedAt" class="status-chip faint">—</span>
       </div>
       <p id="tableHelp" class="panel-note">
-        Each column is an hour. Rows show wave height, wave period, wind speed, gusts, direction, rain, tide height, and surfability. 
+        Columns are hours (00–23). Rows show wave height, wave period, wind speed, gusts, direction, rain, tide height, and surfability. 
         Night hours are shaded. Auto‑refresh every 30 minutes.
       </p>
     </section>

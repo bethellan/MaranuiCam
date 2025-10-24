@@ -1,43 +1,31 @@
-Maranui Webcam — v6.2 (Solid Red Wing Bars + 24‑Hour Table)
-================================================================
+Maranui Webcam — v6.3 (Sunrise/Sunset Icons + Fixed 24‑Hour Table)
+=====================================================================
 
-Overview
---------
-Two live cameras (Surf and Airport) with **solid red Maranui wing banners** at the top and bottom of the video. 
-Below the camera is a compact 24‑hour conditions table that auto‑updates every 30 minutes.
-
-How to Use
+What’s new
 ----------
-1. Open `index.html` in a browser via a local server (prevents CORS blocking). For example:
-   - macOS/Linux:
-     cd maranui-webcam-v6_2_red && python3 -m http.server 8080
-     then open http://localhost:8080
-   - Windows:
-     cd maranui-webcam-v6_2_red && python -m http.server 8080
-     then open http://localhost:8080
-2. Use the **Surf / Airport** toggle to switch feeds.
-3. Watch the **status chip** under the table:
-   - 🌐 Live data (Open‑Meteo reached)
-   - 📁 Offline sample (fallback demo data used)
+- **Sunrise / Sunset** chips use coloured **gradient SVG icons** (no text labels; hover shows tooltips).
+- **High / Low tide** times are merged into one compact chip: “🌊 HH:MM / HH:MM”.
+- **24‑hour forecast** table fixed and robust (live data or fallback), with correct night shading and surfability.
+- Theme stays with **solid Maranui red** wing banners (28px) scrolling left→right.
 
-Data Sources
+How to run (to get LIVE data)
+-----------------------------
+Run via a local server to avoid CORS:
+- macOS/Linux
+  cd maranui-webcam-v6_3
+  python3 -m http.server 8080
+  open http://localhost:8080
+- Windows
+  cd maranui-webcam-v6_3
+  python -m http.server 8080
+
+Data sources
 ------------
-- **Open‑Meteo Forecast** (wind, gusts, rain, sunrise, sunset): https://api.open-meteo.com/v1/forecast
-- **Open‑Meteo Marine** (waves: height, period, direction): https://marine-api.open-meteo.com/v1/marine
-- **Open‑Meteo Tide** (tide height series; for official times see MetService): https://marine-api.open-meteo.com/v1/tide
+- Open‑Meteo Forecast (wind, gusts, rain, sunrise/sunset)
+- Open‑Meteo Marine (wave height/period/direction)
+- Open‑Meteo Tide (tide height series). For official tide times, refer to MetService Wellington Tides.
 
 Notes
 -----
-- If a data source fails or CORS blocks the requests, the app shows an **offline sample dataset** so the table still renders.
-- For official tide times, please check MetService Wellington Tides.
-- Theme colours and wing speed/size are configurable in `style.css`:
-  - `.overlay { height: 28px }`
-  - `.overlay { background-size: 210px auto }`
-  - `@keyframes drift` (60s loop)
-
-Files
------
-- `index.html` – structure
-- `style.css` – theme, **solid red** wing bars, table styles
-- `script.js` – data fetch + fallback, table rendering, camera toggle
-- `assets/maranui-wing-band.png` – wing banner image (repeat‑x tile)
+- If any live call fails, the app switches to a built‑in fallback dataset so the table still renders.
+- You can tweak banner speed, height or tile size via `style.css` (`@keyframes drift`, `.overlay`).
