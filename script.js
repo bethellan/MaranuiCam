@@ -23,6 +23,21 @@ camToggle.addEventListener("click", () => {
 });
 setToggle();
 
+// Force autoplay on load for iOS/Safari
+window.addEventListener('load', () => {
+  const frame = document.getElementById('liveFrame');
+  // Replace the src to re-trigger autoplay with mute param
+  if (frame && !frame.src.includes('autoplay=1')) {
+    frame.src = SURF_EMBED;
+  } else {
+    // Light poke to start playback
+    const temp = frame.src;
+    frame.src = '';
+    setTimeout(() => frame.src = temp, 300);
+  }
+});
+
+
 document.getElementById("dateLabel").textContent =
   new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
 
