@@ -166,3 +166,9 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 
 @media (max-width:640px){ .header-logo{height:24px} }
 @media (max-width:640px){ .cond-table td, .cond-table th { font-size: 12px; padding:4px 6px; } }
+
+/* Hide the two small icon chips sitting below the video */
+.info-chips {
+  display: none !important;
+}
+
