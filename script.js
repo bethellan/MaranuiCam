@@ -145,6 +145,8 @@ function buildTable(d) {
     tbody.appendChild(tr);
   });
 
+ 
+
   // Surfability
   const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
   const tr=document.createElement("tr");
@@ -161,11 +163,42 @@ function buildTable(d) {
   badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
 }
 
+
 function isNight(d,h){
   const hh = (h instanceof Date)? h : d.labelHours[h];
   return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
 }
+ /* ---------- Sunrise / Sunset + Tide Extremes Display ---------- */
 
+function findTideExtremes(tideHeights, hours) {
+  const highs = [], lows = [];
+  for (let i = 1; i < tideHeights.length - 1; i++) {
+    const prev = tideHeights[i - 1], curr = tideHeights[i], next = tideHeights[i + 1];
+    if (curr > prev && curr > next) highs.push(hours[i]);
+    if (curr < prev && curr < next) lows.push(hours[i]);
+  }
+  // Pick the next upcoming high/low relative to now
+  return {
+    nextHigh: highs.find(t => t > new Date()) || highs[0],
+    nextLow:  lows.find(t => t > new Date())  || lows[0]
+  };
+}
+
+function updateChips(d) {
+  /* 🌅🌇 Sunrise / Sunset */
+  const s = new Date(d.sunrise), e = new Date(d.sunset);
+  const sunChip = document.getElementById("sunChip");
+  sunChip.innerHTML = `🌅 ${s.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}  ` +
+                      `🌇 ${e.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+
+  /* 🌊 Tide High / Low */
+  if (d.tide && d.labelHours) {
+    const tides = findTideExtremes(d.tide, d.labelHours);
+    const tideChip = document.getElementById("tideChip");
+    tideChip.innerHTML = `🌊 ${tides.nextHigh.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} ↑ / ` +
+                         `${tides.nextLow.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} ↓`;
+  }
+}
 /* ---------- Scoring ---------- */
 function score(wave,wind,rain,dir){
   if(wave==null) return 0;
@@ -184,6 +217,7 @@ async function refresh(){
   try{
     const d = await fetchData();
     buildTable(d);
+    updateChips(d);
     document.getElementById("dataStatus").textContent = d.offline?"📁 Offline":"🌐 Live";
   }catch(e){
     console.error(e);
