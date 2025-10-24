@@ -1,310 +1,73 @@
-// ===== v6.4.4 MaranuiCam — precise sunrise/sunset + full 24h tides =====
+// ===== v6.4.5 MaranuiCam — precise sunrise/sunset + local 4-tide display =====
 const LAT = -41.327, LON = 174.794;
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 
 const frame = document.getElementById("liveFrame");
 const camToggle = document.getElementById("camToggle");
-let showingSurf = true;
-let youtubeAPIReady = false;
-let player;
-let overlayAdded = false;
-
+let showingSurf = true, youtubeAPIReady = false, player, overlayAdded = false;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-// Load YouTube IFrame API
-function loadYouTubeAPI() {
-  const tag = document.createElement('script');
-  tag.src = "https://www.youtube.com/iframe_api";
-  const firstScriptTag = document.getElementsByTagName('script')[0];
-  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-}
-
-// YouTube API ready callback
-window.onYouTubeIframeAPIReady = function() {
-  youtubeAPIReady = true;
-  initPlayer();
-};
-
-function initPlayer() {
-  if (!frame || !youtubeAPIReady) return;
-  player = new YT.Player(frame, {
-    events: {
-      'onReady': onPlayerReady,
-      'onStateChange': onPlayerStateChange
-    }
-  });
-}
-
-function onPlayerReady(event) {
-  tryPlay();
-  ['touchstart','click'].forEach(evt => {
-    document.addEventListener(evt, () => tryPlay(true), { once: true });
-  });
-}
-
-function tryPlay(fromGesture=false){
-  if (!player || typeof player.playVideo !== 'function') return;
-  try { player.mute && player.mute(); } catch(e){}
-  setTimeout(() => { try { player.playVideo(); } catch(e){} }, fromGesture ? 0 : 300);
-  setTimeout(() => {
-    if (isIOS && !overlayAdded && !isPlaying()) addIOSOverlay();
-  }, 3000);
-}
-
-function isPlaying(){
-  try { return player && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING; }
-  catch { return false; }
-}
-
-function onPlayerStateChange(event) {
-  if (event.data === YT.PlayerState.PLAYING) {
-    const overlay = document.querySelector('.ios-play-overlay');
-    if (overlay) overlay.remove();
-    overlayAdded = false;
-  } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-    setTimeout(() => { try { player.playVideo(); } catch(e){} }, 800);
-  }
-}
-
-function addIOSOverlay() {
-  const cam = document.querySelector('.cam');
-  if (!cam || overlayAdded) return;
-  const overlay = document.createElement('div');
-  overlay.className = 'ios-play-overlay';
-  overlay.textContent = '▶ Tap to Play Video';
-  overlay.addEventListener('click', () => {
-    tryPlay(true);
-  });
-  cam.appendChild(overlay);
-  overlayAdded = true;
-}
-
-// Camera toggle
-function setToggle() {
-  camToggle.classList.toggle("toggle--surf", showingSurf);
-  camToggle.classList.toggle("toggle--airport", !showingSurf);
-}
-
-camToggle.addEventListener("click", () => {
-  showingSurf = !showingSurf;
-  setToggle();
-  frame.style.opacity = "0";
-  setTimeout(() => {
-    frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
-    frame.style.opacity = "1";
-    setTimeout(() => {
-      if (window.YT && youtubeAPIReady) initPlayer();
-      tryPlay();
-    }, 400);
-  }, 200);
-});
-
-window.addEventListener("load", () => {
-  setToggle();
-  loadYouTubeAPI();
-  document.getElementById("dateLabel").textContent =
-    new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
-  refresh();
-  setInterval(refresh, 30*60*1000);
-});
+/* ---------- YouTube handling ---------- */
+function loadYouTubeAPI(){const t=document.createElement("script");t.src="https://www.youtube.com/iframe_api";document.getElementsByTagName("script")[0].parentNode.insertBefore(t,document.getElementsByTagName("script")[0]);}
+window.onYouTubeIframeAPIReady=function(){youtubeAPIReady=!0;initPlayer()};
+function initPlayer(){if(!frame||!youtubeAPIReady)return;player=new YT.Player(frame,{events:{onReady:onPlayerReady,onStateChange:onPlayerStateChange}})}
+function onPlayerReady(){tryPlay();["touchstart","click"].forEach(e=>{document.addEventListener(e,()=>tryPlay(!0),{once:!0})})}
+function tryPlay(e=!1){if(!player||typeof player.playVideo!="function")return;try{player.mute&&player.mute()}catch(t){}setTimeout(()=>{try{player.playVideo()}catch(t){}},e?0:300);setTimeout(()=>{isIOS&&!overlayAdded&&!isPlaying()&&addIOSOverlay()},3e3)}
+function isPlaying(){try{return player&&player.getPlayerState&&player.getPlayerState()===YT.PlayerState.PLAYING}catch{return!1}}
+function onPlayerStateChange(e){if(e.data===YT.PlayerState.PLAYING){const t=document.querySelector(".ios-play-overlay");t&&t.remove(),overlayAdded=!1}else(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.ENDED)&&setTimeout(()=>{try{player.playVideo()}catch(t){}},800)}
+function addIOSOverlay(){const e=document.querySelector(".cam");if(!e||overlayAdded)return;const t=document.createElement("div");t.className="ios-play-overlay",t.textContent="▶ Tap to Play Video",t.addEventListener("click",()=>{tryPlay(!0)}),e.appendChild(t),overlayAdded=!0}
+function setToggle(){camToggle.classList.toggle("toggle--surf",showingSurf),camToggle.classList.toggle("toggle--airport",!showingSurf)}
+camToggle.addEventListener("click",()=>{showingSurf=!showingSurf,setToggle(),frame.style.opacity="0",setTimeout(()=>{frame.src=showingSurf?SURF_EMBED:AIRPORT_EMBED,frame.style.opacity="1",setTimeout(()=>{window.YT&&youtubeAPIReady&&initPlayer(),tryPlay()},400)},200)});
+window.addEventListener("load",()=>{setToggle(),loadYouTubeAPI(),document.getElementById("dateLabel").textContent=new Date().toLocaleDateString([],{weekday:"long",day:"numeric",month:"short"}),refresh(),setInterval(refresh,18e5)});
 
 /* ---------- Helpers ---------- */
-function toHourISO(d) { return new Date(d).toISOString().slice(0, 13) + ":00"; }
-function degToCompass(num) {
-  const arr = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
-  return arr[Math.round(num / 22.5) % 16];
-}
+function toHourISO(e){return new Date(e).toISOString().slice(0,13)+":00"}
+function degToCompass(e){const t=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];return t[Math.round(e/22.5)%16]}
+function offlineData(){const e=new Date;e.setMinutes(0,0,0);const t=Array.from({length:24},(t,a)=>new Date(e.getTime()+36e5*a)),n=(e,t)=>+(Math.random()*(t-e)+e).toFixed(1);return{labelHours:t,wave:t.map(()=>n(.8,1.6)),waveP:t.map(()=>n(7,10)),wind:t.map(()=>n(8,20)),gusts:t.map(()=>n(12,28)),windDir:t.map(()=>Math.floor(Math.random()*360)),rain:t.map(()=>Math.random()<.1?n(0,1.2):0),tide:t.map(()=>n(.6,1.4)),sunrise:new Date().setHours(7,0,0,0),sunset:new Date().setHours(19,0,0,0),offline:!0}}
+async function fetchSunTimes(e,t){try{const n=await fetch(`https://api.sunrise-sunset.org/json?lat=${e}&lng=${t}&formatted=0`),a=await n.json();if(a.status==="OK")return{sunrise:new Date(a.results.sunrise),sunset:new Date(a.results.sunset)}}catch(e){console.warn("Sunrise-Sunset fetch failed:",e)}return{sunrise:new Date().setHours(7,0,0,0),sunset:new Date().setHours(19,0,0,0)}}
 
-/* ---------- Offline fallback ---------- */
-function offlineData() {
-  const base = new Date(); base.setMinutes(0,0,0);
-  const hours = Array.from({ length: 24 }, (_, i) => new Date(base.getTime() + i*3600*1000));
-  const fake = (min,max)=> +(Math.random()*(max-min)+min).toFixed(1);
-  return {
-    labelHours: hours,
-    wave: hours.map(()=>fake(0.8,1.6)),
-    waveP: hours.map(()=>fake(7,10)),
-    wind: hours.map(()=>fake(8,20)),
-    gusts: hours.map(()=>fake(12,28)),
-    windDir: hours.map(()=>Math.floor(Math.random()*360)),
-    rain: hours.map(()=>Math.random()<0.1?fake(0,1.2):0),
-    tide: hours.map(()=>fake(0.6,1.4)),
-    sunrise: new Date().setHours(7,0,0,0),
-    sunset: new Date().setHours(19,0,0,0),
-    offline:true
-  };
-}
+/* ---------- Fetch Open-Meteo ---------- */
+async function fetchData(){const e=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`,t=`https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`,n=`https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;try{const[a,r,i]=await Promise.allSettled([fetch(e),fetch(t),fetch(n)]),o=a.value&&a.value.ok?await a.value.json():{},s=r.value&&r.value.ok?await r.value.json():{},l=i.value&&i.value.ok?await i.value.json():{},c=new Date;c.setMinutes(0,0,0);const d=Array.from({length:24},(e,t)=>new Date(c.getTime()+36e5*t)),u=e=>e?Object.fromEntries(e.time.map((e,t)=>[e,t])):{},m=u(o.hourly||{}),h=u(s.hourly||{}),f=u(l.hourly||{}),p={labelHours:d,wind:[],gusts:[],windDir:[],rain:[],wave:[],waveP:[],waveD:[],tide:[],sunrise:o.daily?.sunrise?new Date(o.daily.sunrise[0]):new Date().setHours(7,0),sunset:o.daily?.sunset?new Date(o.daily.sunset[0]):new Date().setHours(19,0),offline:!1};return d.forEach(e=>{const t=toHourISO(e),n=m[t],a=h[t],r=f[t];p.wind.push(n!=null?o.hourly.wind_speed_10m[n]:null),p.gusts.push(n!=null?o.hourly.wind_gusts_10m[n]:null),p.windDir.push(n!=null?o.hourly.wind_direction_10m[n]:null),p.rain.push(n!=null?o.hourly.precipitation[n]:null),p.wave.push(a!=null?s.hourly.wave_height[a]:null),p.waveP.push(a!=null?s.hourly.wave_period[a]:null),p.waveD.push(a!=null?s.hourly.wave_direction[a]:null),p.tide.push(r!=null?l.hourly.tide_height[r]:null)}),p}catch(e){return console.warn("Falling back:",e),offlineData()}}
 
-/* ---------- Fetch sunrise/sunset with minute precision ---------- */
-async function fetchSunTimes(lat, lon) {
-  try {
-    const resp = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
-    const json = await resp.json();
-    if (json.status === "OK") {
-      return {
-        sunrise: new Date(json.results.sunrise),
-        sunset: new Date(json.results.sunset)
-      };
-    }
-  } catch (e) {
-    console.warn("Sunrise-Sunset fetch failed:", e);
-  }
-  return { sunrise: new Date().setHours(7,0,0,0), sunset: new Date().setHours(19,0,0,0) };
-}
+/* ---------- Table ---------- */
+function buildTable(e){const t=document.getElementById("thead"),n=document.getElementById("tbody");t.innerHTML=n.innerHTML="";const a=document.createElement("tr");a.innerHTML="<th>Metric</th>"+e.labelHours.map(t=>`<th${isNight(e,t)?' class="night"':''}>${t.toLocaleTimeString([],{hour:"2-digit"})}</th>`).join(""),t.appendChild(a);const r=[["Wave (m)",e.wave,t=>t?.toFixed(1)??"—"],["Period (s)",e.waveP,t=>t?.toFixed(0)??"—"],["Wind (km/h)",e.wind,t=>t?.toFixed(0)??"—"],["Gusts (km/h)",e.gusts,t=>t?.toFixed(0)??"—"],["Direction",e.windDir,t=>t!=null?`${degToCompass(t)} <span style='transform:rotate(${t}deg)' class='dir-arrow'>➤</span>`:"—"],["Rain (mm/hr)",e.rain,t=>t?.toFixed(1)??"—"],["Tide (m)",e.tide,t=>t?.toFixed(2)??"—"]];r.forEach(([t,a,r])=>{const i=document.createElement("tr");i.innerHTML="<th>"+t+"</th>"+a.map((t,n)=>`<td${isNight(e,n)?' class="night"':''}>${r(t)}</td>`).join(""),n.appendChild(i)});const i=e.labelHours.map((t,n)=>score(e.wave[n],e.wind[n],e.rain[n],e.windDir[n])),o=document.createElement("tr");o.innerHTML="<th>Surfability (1–10)</th>"+i.map((t,n)=>{const a=t>=8?"good":t>=5?"fair":"poor";return`<td class="scale-surf ${a}${isNight(e,n)?' night':''}">${t.toFixed(1)}</td>`}).join(""),n.appendChild(o);const s=i[0],l=document.getElementById("scoreBadge");l.textContent=`Surfability ${s.toFixed(1)}`,l.className="chip score "+(s>=8?"good":s>=5?"":"poor")}
+function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new Date(e.sunrise)||n>=new Date(e.sunset)}
 
-/* ---------- Fetch + align Open-Meteo data ---------- */
-async function fetchData() {
-  const forecast = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`;
-  const marine   = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`;
-  const tide     = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
-
-  try {
-    const [fR, mR, tR] = await Promise.allSettled([ fetch(forecast), fetch(marine), fetch(tide) ]);
-    const f = fR.value && fR.value.ok ? await fR.value.json() : {};
-    const m = mR.value && mR.value.ok ? await mR.value.json() : {};
-    const t = tR.value && tR.value.ok ? await tR.value.json() : {};
-
-    const base = new Date(); base.setMinutes(0,0,0);
-    const hours = Array.from({ length: 24 }, (_,i)=>new Date(base.getTime()+i*3600*1000));
-
-    const idx = a => a ? Object.fromEntries(a.time.map((v,i)=>[v,i])) : {};
-    const iF = idx(f.hourly||{}), iM = idx(m.hourly||{}), iT = idx(t.hourly||{});
-
-    const data = {
-      labelHours: hours,
-      wind: [], gusts: [], windDir: [], rain: [],
-      wave: [], waveP: [], waveD: [], tide: [],
-      sunrise: f.daily?.sunrise ? new Date(f.daily.sunrise[0]) : new Date().setHours(7,0),
-      sunset:  f.daily?.sunset  ? new Date(f.daily.sunset[0])  : new Date().setHours(19,0),
-      offline:false
-    };
-
-    hours.forEach(h=>{
-      const iso = toHourISO(h);
-      const fI=iF[iso], mI=iM[iso], tI=iT[iso];
-      data.wind.push(fI!=null? f.hourly.wind_speed_10m[fI]:null);
-      data.gusts.push(fI!=null? f.hourly.wind_gusts_10m[fI]:null);
-      data.windDir.push(fI!=null? f.hourly.wind_direction_10m[fI]:null);
-      data.rain.push(fI!=null? f.hourly.precipitation[fI]:null);
-      data.wave.push(mI!=null? m.hourly.wave_height[mI]:null);
-      data.waveP.push(mI!=null? m.hourly.wave_period[mI]:null);
-      data.waveD.push(mI!=null? m.hourly.wave_direction[mI]:null);
-      data.tide.push(tI!=null? t.hourly.tide_height[tI]:null);
-    });
-
-    return data;
-  } catch (err) {
-    console.warn("Falling back:", err);
-    return offlineData();
-  }
-}
-
-/* ---------- Build table ---------- */
-function buildTable(d) {
-  const thead = document.getElementById("thead");
-  const tbody = document.getElementById("tbody");
-  thead.innerHTML = tbody.innerHTML = "";
-
-  const trH = document.createElement("tr");
-  trH.innerHTML = "<th>Metric</th>" +
-    d.labelHours.map(h=>`<th${isNight(d,h)?' class="night"':''}>${h.toLocaleTimeString([], {hour:'2-digit'})}</th>`).join("");
-  thead.appendChild(trH);
-
-  const rows = [
-    ["Wave (m)", d.wave, v=>v?.toFixed(1)??"—"],
-    ["Period (s)", d.waveP, v=>v?.toFixed(0)??"—"],
-    ["Wind (km/h)", d.wind, v=>v?.toFixed(0)??"—"],
-    ["Gusts (km/h)", d.gusts, v=>v?.toFixed(0)??"—"],
-    ["Direction", d.windDir, v=> v!=null ? `${degToCompass(v)} <span style='transform:rotate(${v}deg)' class='dir-arrow'>➤</span>` : "—"],
-    ["Rain (mm/hr)", d.rain, v=>v?.toFixed(1)??"—"],
-    ["Tide (m)", d.tide, v=>v?.toFixed(2)??"—"]
-  ];
-
-  rows.forEach(([label, arr, fmt])=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML="<th>"+label+"</th>"+
-      arr.map((v,i)=>`<td${isNight(d,i)?' class="night"':''}>${fmt(v)}</td>`).join("");
-    tbody.appendChild(tr);
-  });
-
-  const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
-  const tr=document.createElement("tr");
-  tr.innerHTML="<th>Surfability (1–10)</th>"+
-    surf.map((v,i)=>{
-      const cls = v>=8?"good":v>=5?"fair":"poor";
-      return `<td class="scale-surf ${cls}${isNight(d,i)?' night':''}">${v.toFixed(1)}</td>`;
-    }).join("");
-  tbody.appendChild(tr);
-
-  const now = surf[0];
-  const badge=document.getElementById("scoreBadge");
-  badge.textContent=`Surfability ${now.toFixed(1)}`;
-  badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
-}
-
-function isNight(d,h){
-  const hh = (h instanceof Date)? h : d.labelHours[h];
-  return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
-}
-
-/* ---------- Find all high/low tides ---------- */
-function findTideExtremes(tideHeights, hours) {
-  const highs=[], lows=[];
-  for (let i=1;i<tideHeights.length-1;i++){
-    const prev=tideHeights[i-1], curr=tideHeights[i], next=tideHeights[i+1];
-    if (curr>prev && curr>next) highs.push({time:hours[i],height:curr});
-    if (curr<prev && curr<next) lows.push({time:hours[i],height:curr});
-  }
-  return { highs, lows };
-}
-
-/* ---------- Update chips ---------- */
-function updateChips(d) {
+/* ---------- Tides ---------- */
+function findTideExtremes(e,t){const n=[],a=[];for(let r=1;r<e.length-1;r++){const i=e[r-1],o=e[r],s=e[r+1];o>i&&o>s&&n.push({time:t[r],height:o}),o<i&&o<s&&a.push({time:t[r],height:o})}return{highs:n,lows:a}}
+function updateChips(e){
+  const fmt=t=>new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"});
   const sunChip=document.getElementById("sunChip");
-  if (sunChip){
-    sunChip.innerHTML=`🌅 ${new Date(d.sunrise).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}  `+
-                      `🌇 ${new Date(d.sunset).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}`;
-  }
-
+  if(sunChip) sunChip.innerHTML=`🌅 ${fmt(e.sunrise)}  🌇 ${fmt(e.sunset)}`;
   const tideChip=document.getElementById("tideChip");
-  if (tideChip && d.tide?.length){
-    const tides=findTideExtremes(d.tide,d.labelHours);
-    const highs=tides.highs.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
-    const lows=tides.lows.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
-    tideChip.innerHTML=`🌊 Highs: ${highs} | Lows: ${lows}`;
-  } else if (tideChip) tideChip.innerHTML="🌊 Tide data loading...";
+  if(tideChip&&e.tide?.length){
+    const tides=findTideExtremes(e.tide,e.labelHours);
+    const today=new Date(),todayStr=today.toISOString().slice(0,10);
+    const events=[...tides.highs.map(t=>({type:"HIGH",time:new Date(t.time)})),...tides.lows.map(t=>({type:"LOW",time:new Date(t.time)}))]
+      .map(ev=>({...ev,local:new Date(ev.time.toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}))}))
+      .filter(ev=>ev.local.toISOString().startsWith(todayStr))
+      .sort((a,b)=>a.local-b.local)
+      .slice(0,4);
+    const formatted=events.map(ev=>`${ev.type}: ${fmt(ev.local)}`).join(" | ");
+    tideChip.innerHTML=`🌊 ${formatted}`;
+  } else if(tideChip) tideChip.innerHTML="🌊 Tide data loading...";
 }
 
 /* ---------- Scoring ---------- */
-function score(wave,wind,rain,dir){
-  if(wave==null) return 0;
-  let s=10 - Math.abs(wave-1)*5;
-  s -= wind>20? (wind-20)/5 : 0;
-  if(rain>0.5) s-=2;
-  if(dir && (dir<200||dir>340)) s+=1;
-  return Math.max(0,Math.min(10,s));
-}
+function score(e,t,n,a){if(e==null)return 0;let r=10-Math.abs(e-1)*5;return r-=t>20?(t-20)/5:0,n>.5&&(r-=2),a&&(a<200||a>340)&&(r+=1),Math.max(0,Math.min(10,r))}
 
-/* ---------- Refresh cycle ---------- */
+/* ---------- Refresh ---------- */
 async function refresh(){
-  const fallback=offlineData();
-  buildTable(fallback);
-  const sunTimes=await fetchSunTimes(LAT,LON);
-  fallback.sunrise=sunTimes.sunrise;
-  fallback.sunset=sunTimes.sunset;
-  updateChips(fallback);
+  const e=offlineData();
+  buildTable(e);
+  const t=await fetchSunTimes(LAT,LON);
+  e.sunrise=t.sunrise,e.sunset=t.sunset,updateChips(e);
   document.getElementById("dataStatus").textContent="⏳ loading...";
   try{
-    const d=await fetchData();
-    const sun=await fetchSunTimes(LAT,LON);
-    d.sunrise=sun.sunrise; d.sunset=sun.sunset;
-    buildTable(d);
-    updateChips(d);
-    document.getElementById("dataStatus").textContent=d.offline?"📁 Offline":"🌐 Live";
-    document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString();
-  }catch(e){
-    console.error("Refresh failed:",e);
-    document.getElementById("dataStatus").textContent="❌ Error";
-  }
+    const n=await fetchData(),a=await fetchSunTimes(LAT,LON);
+    n.sunrise=a.sunrise,n.sunset=a.sunset,buildTable(n),updateChips(n),
+    document.getElementById("dataStatus").textContent=n.offline?"📁 Offline":"🌐 Live",
+    document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString()
+  }catch(e){console.error("Refresh failed:",e),document.getElementById("dataStatus").textContent="❌ Error"}
 }
