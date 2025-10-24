@@ -233,18 +233,21 @@ function score(wave,wind,rain,dir){
   return Math.max(0,Math.min(10,s));
 }
 
-/* ---------- Run loop ---------- */
 async function refresh(){
-  const fallback=offlineData();
-  buildTable(fallback); // instant draw
-  document.getElementById("dataStatus").textContent="⏳ loading...";
-  try{
+  const fallback = offlineData();
+  buildTable(fallback);
+  updateChips(fallback); // Show fallback data immediately
+  
+  document.getElementById("dataStatus").textContent = "⏳ loading...";
+  try {
     const d = await fetchData();
     buildTable(d);
     updateChips(d);
-    document.getElementById("dataStatus").textContent = d.offline?"📁 Offline":"🌐 Live";
-  }catch(e){
-    console.error(e);
+    document.getElementById("dataStatus").textContent = d.offline ? "📁 Offline" : "🌐 Live";
+    document.getElementById("updatedAt").textContent = new Date().toLocaleTimeString();
+  } catch(e) {
+    console.error("Refresh failed:", e);
+    document.getElementById("dataStatus").textContent = "❌ Error";
   }
 }
 refresh();
