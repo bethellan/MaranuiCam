@@ -40,6 +40,33 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 .overlay.bottom{bottom:0}
 @keyframes drift{ from{background-position-x:0} to{background-position-x:210px} }
 
+/* iOS Play Button Override */
+.ios-play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(230, 57, 70, 0.95);
+  color: white;
+  padding: 14px 28px;
+  border-radius: 50px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  border: 2px solid white;
+  font-size: 16px;
+}
+
+.ios-play-overlay:hover {
+  background: rgba(230, 57, 70, 1);
+}
+
+/* Ensure camera section has proper positioning */
+.cam {
+  position: relative;
+}
 /* Gradient toggle: red ⇄ blue */
 .switch-row{display:flex; justify-content:center; margin:8px 0 12px}
 .toggle{
