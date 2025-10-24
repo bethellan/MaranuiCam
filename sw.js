@@ -1,6 +1,54 @@
-const CACHE='maranui-shell-v4';
-const ASSETS=['./','./index.html','./style.css','./script.js','./manifest.json','./icons/icon-192.png','./icons/icon-512.png',
-'./assets/logos/maranui-script.jpg','./assets/logos/maranui-cap.jpg','./assets/logos/maranui-wings.jpg','./assets/logos/maranui-wing-band.png'];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(u.origin===location.origin){e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));}});
+// MaranuiCam Service Worker — v6.3.2
+const CACHE_NAME = 'maranui-v6_3_2';
+const ASSETS = [
+  './',
+  './index.html',
+  './style.css?v=6.3.2',
+  './script.js?v=6.3.2'
+];
+
+self.addEventListener('install', (event) => {
+  // Clear all old caches immediately, then pre-cache shell
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(ASSETS);
+    self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+// Network-first for navigation (HTML), cache-first for versioned assets
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
+  // Always try network for navigations to avoid stale HTML
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const resp = await fetch(req);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, resp.clone());
+        return resp;
+      } catch (e) {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(req);
+        return cached || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // For static assets with version query, prefer cache
+  if (req.url.includes('style.css') || req.url.includes('script.js')) {
+    event.respondWith(caches.match(req).then(r => r || fetch(req)));
+    return;
+  }
+
+  // Default: just fetch
+  event.respondWith(fetch(req).catch(() => caches.match(req)));
+});
