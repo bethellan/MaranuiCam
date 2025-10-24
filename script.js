@@ -24,18 +24,29 @@ camToggle.addEventListener("click", () => {
 setToggle();
 
 // Force autoplay on load for iOS/Safari
-window.addEventListener('load', () => {
-  const frame = document.getElementById('liveFrame');
-  // Replace the src to re-trigger autoplay with mute param
-  if (frame && !frame.src.includes('autoplay=1')) {
-    frame.src = SURF_EMBED;
-  } else {
-    // Light poke to start playback
-    const temp = frame.src;
-    frame.src = '';
-    setTimeout(() => frame.src = temp, 300);
+// --- Force autoplay on iOS / Safari ---
+window.addEventListener("load", () => {
+  const frame = document.getElementById("liveFrame");
+  if (!frame) return;
+
+  // 1️⃣ Ensure autoplay/mute params exist
+  if (!frame.src.includes("autoplay=1")) {
+    frame.src += (frame.src.includes("?") ? "&" : "?") + "autoplay=1&mute=1&playsinline=1";
   }
+
+  // 2️⃣ Create a short “touch” event to count as user interaction
+  const poke = () => {
+    const temp = frame.src;
+    frame.src = "";
+    setTimeout(() => (frame.src = temp), 250);
+    document.removeEventListener("touchstart", poke);
+  };
+
+  // 3️⃣ Trigger automatically or via first tap
+  setTimeout(poke, 1200); // auto poke after 1.2s
+  document.addEventListener("touchstart", poke, { once: true });
 });
+
 
 
 document.getElementById("dateLabel").textContent =
