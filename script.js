@@ -14,18 +14,19 @@ const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute
 const frame = document.getElementById('liveFrame');
 const switchBtn = document.getElementById('camSwitch');
 let showingSurf = true;
-switchBtn.addEventListener('click', ()=>{
+
+function toggleCamera() {
   showingSurf = !showingSurf;
-  frame.style.opacity = '0';
-  setTimeout(()=>{
+  frame.classList.add('fade');
+  setTimeout(() => {
     frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
-    switchBtn.classList.toggle('switch--surf', showingSurf);
-    switchBtn.classList.toggle('switch--airport', !showingSurf);
-    switchBtn.setAttribute('aria-pressed', String(showingSurf));
-    switchBtn.innerHTML = showingSurf ? "Surf <span class='divider'>/</span> <span class='alt'>Airport</span>" : "Airport <span class='divider'>/</span> <span class='alt'>Surf</span>";
-    frame.style.opacity = '1';
-  }, 180);
-});
+    switchBtn.textContent = showingSurf ? "Surf / Airport" : "Airport / Surf";
+    frame.classList.remove('fade');
+  }, 300);
+}
+
+switchBtn.addEventListener('click', toggleCamera);
+
 
 // Date label
 function todayLabel(){
