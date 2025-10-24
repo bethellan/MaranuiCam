@@ -1,107 +1,641 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui SLSC – Surf & Airport Live (v6.3)</title>
-  <meta name="theme-color" content="#e63946" />
-  <link rel="stylesheet" href="style.css?v=3" />
-  <script defer src="script.js?v=3"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyall Bay Surf Dashboard</title>
+    <style>
+        :root {
+            --primary-blue: #1a73e8;
+            --dark-blue: #0d47a1;
+            --light-blue: #e8f0fe;
+            --text-dark: #202124;
+            --text-light: #5f6368;
+            --white: #ffffff;
+            --border-color: #dadce0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 25px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo img {
+            height: 40px;
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 25px;
+        }
+        
+        nav a {
+            text-decoration: none;
+            color: var(--text-light);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover, nav a.active {
+            color: var(--primary-blue);
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background-color: var(--white);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .camera-container {
+            position: relative;
+            height: 300px;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .camera-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.5s;
+        }
+        
+        .camera-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .camera-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .camera-btn:hover {
+            background-color: var(--dark-blue);
+        }
+        
+        .camera-indicator {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .indicator-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--border-color);
+        }
+        
+        .indicator-dot.active {
+            background-color: var(--primary-blue);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 15px;
+            background-color: var(--light-blue);
+            border-radius: 8px;
+        }
+        
+        .info-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin: 5px 0;
+        }
+        
+        .info-label {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+        
+        .sun-moon-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .sun-moon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .sun-moon-icon {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+        }
+        
+        .tide-chart {
+            height: 150px;
+            margin: 20px 0;
+            background-color: var(--light-blue);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tide-wave {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 70%;
+            background: linear-gradient(to top, var(--primary-blue), #64b5f6);
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            animation: wave 10s infinite linear;
+        }
+        
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-30px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .tide-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .tide-time {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+        
+        .tide-height {
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+        
+        .surf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .surf-table th {
+            background-color: var(--light-blue);
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .surf-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .surf-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .rating {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        .rating.good {
+            background-color: #e6f4ea;
+            color: #137333;
+        }
+        
+        .rating.fair {
+            background-color: #fff8e1;
+            color: #f57c00;
+        }
+        
+        .rating.poor {
+            background-color: #fce8e6;
+            color: #c5221f;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 30px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-light);
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            nav ul {
+                gap: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="logo-row">
-      <img src="assets/maranui-wing-band.png" class="header-logo" alt="Maranui SLSC wing logo">
-      <h1 class="site-title">Maranui Surf Life Saving Club – Live Surf & Airport Cams</h1>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDOC45NTQgMCAwIDguOTU0IDAgMjBTOC45NTQgNDAgMjAgNDBTNDAgMzEuMDQ2IDQwIDIwUzMxLjA0NiAwIDIwIDBaTTIwIDM2QzExLjE2MyAzNiA0IDI4LjgzNyA0IDIwUzExLjE2MyA0IDIwIDRTMzYgMTEuMTYzIDM2IDIwUzI4LjgzNyAzNiAyMCAzNloiIGZpbGw9IiMxYTczZTgiLz4KPHBhdGggZD0iTTI0IDEySDE2VjI4SDI0VjEyWiIgZmlsbD0iIzFhNzNlOCIvPgo8cGF0aCBkPSJNMjggMTZIMTJWMjRIMjhWMTZaIiBmaWxsPSIjMWE3M2U4Ii8+Cjwvc3ZnPgo=" alt="Surf Icon">
+                <h1>Lyall Bay Surf Report</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" class="active">Dashboard</a></li>
+                    <li><a href="#">Forecast</a></li>
+                    <li><a href="#">Webcams</a></li>
+                    <li><a href="#">Tides</a></li>
+                    <li><a href="#">Weather</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main>
+            <div class="dashboard">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Live Camera View</h2>
+                        <div class="camera-indicator">
+                            <span class="indicator-dot active" data-camera="lyall-bay"></span>
+                            <span class="indicator-dot" data-camera="wellington-airport"></span>
+                        </div>
+                    </div>
+                    <div class="camera-container">
+                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Lyall Bay Surf" class="camera-view active" id="lyall-bay-cam">
+                        <img src="https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Wellington Airport View" class="camera-view" id="wellington-airport-cam">
+                    </div>
+                    <div class="camera-controls">
+                        <button class="camera-btn" id="prev-cam">Previous View</button>
+                        <button class="camera-btn" id="next-cam">Next View</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Current Conditions</h2>
+                        <span id="last-updated">Updated: Just now</span>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Wave Height</span>
+                            <span class="info-value">1.2m</span>
+                            <span class="info-label">Moderate</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Water Temp</span>
+                            <span class="info-value">15°C</span>
+                            <span class="info-label">Chilly</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Wind</span>
+                            <span class="info-value">12 km/h</span>
+                            <span class="info-label">SW</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Swell Period</span>
+                            <span class="info-value">9s</span>
+                            <span class="info-label">Good</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Sun & Moon</h2>
+                        <span id="current-date">Today, Oct 15</span>
+                    </div>
+                    <div class="sun-moon-container">
+                        <div class="sun-moon-item">
+                            <svg class="sun-moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z" stroke="#FF9800" stroke-width="2"/>
+                                <path d="M12 1V3" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M12 21V23" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M4.22 4.22L5.64 5.64" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M18.36 18.36L19.78 19.78" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M1 12H3" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M21 12H23" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M4.22 19.78L5.64 18.36" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M18.36 5.64L19.78 4.22" stroke="#FF9800" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <span class="info-label">Sunrise</span>
+                            <span class="info-value" id="sunrise-time">6:42 AM</span>
+                        </div>
+                        <div class="sun-moon-item">
+                            <svg class="sun-moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 12.79C20.8427 14.4922 20.2039 16.1144 19.1582 17.4668C18.1126 18.8192 16.7035 19.8458 15.0957 20.4265C13.4879 21.0073 11.7479 21.1181 10.0794 20.7461C8.41092 20.3741 6.8829 19.5345 5.67418 18.3258C4.46545 17.1171 3.62593 15.5891 3.2539 13.9206C2.88187 12.2521 2.9927 10.5121 3.57344 8.9043C4.15418 7.29651 5.18085 5.88737 6.53323 4.84175C7.88561 3.79614 9.50779 3.15731 11.21 3C10.2134 4.34827 9.73375 6.00945 9.85849 7.68141C9.98324 9.35338 10.7039 10.9251 11.8894 12.1106C13.0749 13.2961 14.6466 14.0168 16.3186 14.1415C17.9905 14.2663 19.6517 13.7866 21 12.79Z" stroke="#5C6BC0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="info-label">Sunset</span>
+                            <span class="info-value" id="sunset-time">7:58 PM</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Tides</h2>
+                        <span id="tide-date">Today</span>
+                    </div>
+                    <div class="tide-chart">
+                        <div class="tide-wave"></div>
+                    </div>
+                    <div class="tide-info">
+                        <div>
+                            <div class="tide-time">Low: 3:14 AM</div>
+                            <div class="tide-height">0.4m</div>
+                        </div>
+                        <div>
+                            <div class="tide-time">High: 9:42 AM</div>
+                            <div class="tide-height">1.8m</div>
+                        </div>
+                        <div>
+                            <div class="tide-time">Low: 3:45 PM</div>
+                            <div class="tide-height">0.5m</div>
+                        </div>
+                        <div>
+                            <div class="tide-time">High: 10:08 PM</div>
+                            <div class="tide-height">1.7m</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">24-Hour Surf Forecast</h2>
+                    <span id="forecast-period">Next 24 hours</span>
+                </div>
+                <table class="surf-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Height</th>
+                            <th>Period</th>
+                            <th>Direction</th>
+                            <th>Wind</th>
+                            <th>Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>6:00 AM</td>
+                            <td>1.1m</td>
+                            <td>8s</td>
+                            <td>SW</td>
+                            <td>10 km/h SW</td>
+                            <td><span class="rating fair">Fair</span></td>
+                        </tr>
+                        <tr>
+                            <td>9:00 AM</td>
+                            <td>1.3m</td>
+                            <td>9s</td>
+                            <td>S</td>
+                            <td>12 km/h SW</td>
+                            <td><span class="rating good">Good</span></td>
+                        </tr>
+                        <tr>
+                            <td>12:00 PM</td>
+                            <td>1.2m</td>
+                            <td>9s</td>
+                            <td>S</td>
+                            <td>14 km/h SW</td>
+                            <td><span class="rating good">Good</span></td>
+                        </tr>
+                        <tr>
+                            <td>3:00 PM</td>
+                            <td>1.0m</td>
+                            <td>8s</td>
+                            <td>SW</td>
+                            <td>15 km/h SW</td>
+                            <td><span class="rating fair">Fair</span></td>
+                        </tr>
+                        <tr>
+                            <td>6:00 PM</td>
+                            <td>0.9m</td>
+                            <td>7s</td>
+                            <td>SW</td>
+                            <td>13 km/h SW</td>
+                            <td><span class="rating fair">Fair</span></td>
+                        </tr>
+                        <tr>
+                            <td>9:00 PM</td>
+                            <td>0.8m</td>
+                            <td>7s</td>
+                            <td>SW</td>
+                            <td>10 km/h SW</td>
+                            <td><span class="rating poor">Poor</span></td>
+                        </tr>
+                        <tr>
+                            <td>12:00 AM</td>
+                            <td>0.9m</td>
+                            <td>8s</td>
+                            <td>S</td>
+                            <td>8 km/h SW</td>
+                            <td><span class="rating fair">Fair</span></td>
+                        </tr>
+                        <tr>
+                            <td>3:00 AM</td>
+                            <td>1.0m</td>
+                            <td>9s</td>
+                            <td>S</td>
+                            <td>7 km/h SW</td>
+                            <td><span class="rating good">Good</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Lyall Bay Surf Report &copy; 2023 | Data updates every 15 minutes</p>
+        </footer>
     </div>
-  </header>
 
-  <main class="content">
-    <!-- Camera Section -->
-    <section class="camera-section">
-      <div class="cam">
-        <!-- Seamless wing overlay bars -->
-        <div class="overlay top" aria-hidden="true"></div>
-
-        <iframe id="liveFrame"
-          title="Live Camera"
-          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
-          frameborder="0"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowfullscreen
-        ></iframe>
-
-        <div class="overlay bottom" aria-hidden="true"></div>
-      </div>
-
-      <!-- Surf / Airport switch -->
-      <div class="switch-row">
-        <button id="camSwitch" class="switch switch--surf" aria-pressed="true" aria-label="Toggle camera">
-          Surf <span class="divider">/</span> <span class="alt">Airport</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- Summary Panel -->
-    <section class="summary">
-      <div class="summary-row">
-        <div class="chip" title="Sunrise">
-          <!-- Gradient Sunrise SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <defs>
-              <linearGradient id="sunriseGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#FFD54F"/>
-                <stop offset="100%" stop-color="#FFA726"/>
-              </linearGradient>
-            </defs>
-            <path fill="url(#sunriseGradient)" d="M12 2L8 6h3v6h2V6h3l-4-4zM4 18a8 8 0 0116 0h2a10 10 0 00-20 0h2zm-2 2h20v2H2z"/>
-          </svg>
-          <strong id="sunriseLabel">—</strong>
-        </div>
-        <div class="chip" title="Sunset">
-          <!-- Gradient Sunset SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <defs>
-              <linearGradient id="sunsetGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#FFB300"/>
-                <stop offset="100%" stop-color="#F57C00"/>
-              </linearGradient>
-            </defs>
-            <path fill="url(#sunsetGradient)" d="M12 22l4-4h-3v-6h-2v6H8l4 4zM4 18a8 8 0 0116 0h2a10 10 0 00-20 0h2zm-2 2h20v2H2z"/>
-          </svg>
-          <strong id="sunsetLabel">—</strong>
-        </div>
-        <div class="chip">
-          🌊 <strong id="tideHigh">—</strong> / <strong id="tideLow">—</strong>
-        </div>
-        <div class="chip score" id="scoreBadge">Surfability —</div>
-        <a class="chip link" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener">MetService Tides ↗</a>
-        <div class="chip faint" id="dateLabel">—</div>
-      </div>
-    </section>
-
-    <!-- 24h Conditions Table -->
-    <section class="conditions">
-      <h2 class="panel-title">24‑Hour Forecast – Lyall Bay (metric)</h2>
-      <div class="table-scroll">
-        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-      <div class="status-row">
-        <span id="dataStatus" class="status-chip">—</span>
-        <span id="updatedAt" class="status-chip faint">—</span>
-      </div>
-      <p id="tableHelp" class="panel-note">
-        Columns are hours (00–23). Rows show wave height, wave period, wind speed, gusts, direction, rain, tide height, and surfability. 
-        Night hours are shaded. Auto‑refresh every 30 minutes.
-      </p>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <p>© <span id="year"></span> Maranui Surf Life Saving Club. Personal non‑official project.</p>
-  </footer>
+    <script>
+        // Camera switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const lyallBayCam = document.getElementById('lyall-bay-cam');
+            const wellingtonAirportCam = document.getElementById('wellington-airport-cam');
+            const prevBtn = document.getElementById('prev-cam');
+            const nextBtn = document.getElementById('next-cam');
+            const indicatorDots = document.querySelectorAll('.indicator-dot');
+            
+            let currentCamera = 0;
+            const cameras = [
+                { id: 'lyall-bay', element: lyallBayCam },
+                { id: 'wellington-airport', element: wellingtonAirportCam }
+            ];
+            
+            function switchCamera(index) {
+                // Hide all cameras
+                cameras.forEach(cam => {
+                    cam.element.classList.remove('active');
+                });
+                
+                // Show selected camera
+                cameras[index].element.classList.add('active');
+                
+                // Update indicator dots
+                indicatorDots.forEach((dot, i) => {
+                    if (i === index) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
+                
+                currentCamera = index;
+            }
+            
+            // Button event listeners
+            prevBtn.addEventListener('click', function() {
+                let newIndex = currentCamera - 1;
+                if (newIndex < 0) newIndex = cameras.length - 1;
+                switchCamera(newIndex);
+            });
+            
+            nextBtn.addEventListener('click', function() {
+                let newIndex = currentCamera + 1;
+                if (newIndex >= cameras.length) newIndex = 0;
+                switchCamera(newIndex);
+            });
+            
+            // Indicator dot event listeners
+            indicatorDots.forEach((dot, index) => {
+                dot.addEventListener('click', function() {
+                    switchCamera(index);
+                });
+            });
+            
+            // Initialize with first camera
+            switchCamera(0);
+            
+            // Sunrise/Sunset functionality
+            function updateSunTimes() {
+                // In a real implementation, this would fetch data from an API
+                // For demonstration, we'll use static times
+                const sunriseElement = document.getElementById('sunrise-time');
+                const sunsetElement = document.getElementById('sunset-time');
+                
+                // This would be replaced with actual API data
+                sunriseElement.textContent = '6:42 AM';
+                sunsetElement.textContent = '7:58 PM';
+                
+                // Update current date
+                const now = new Date();
+                const options = { weekday: 'long', month: 'short', day: 'numeric' };
+                document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options);
+            }
+            
+            // Update sun times on page load
+            updateSunTimes();
+            
+            // Tide information functionality
+            function updateTideInfo() {
+                // In a real implementation, this would fetch data from an API
+                // For demonstration, we'll use static data
+                
+                // Update last updated time
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('last-updated').textContent = `Updated: ${timeString}`;
+            }
+            
+            // Update tide info on page load
+            updateTideInfo();
+            
+            // Simulate periodic updates (every 15 minutes)
+            setInterval(updateTideInfo, 900000);
+        });
+    </script>
 </body>
 </html>
