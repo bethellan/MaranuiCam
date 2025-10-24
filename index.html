@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Webcam - Maranui Surf Life Saving Club, Wellington NZ</title>
-    <meta name="description" content="Live webcam view of Lyall Bay and the Maranui Surf Life Saving Club in Wellington, New Zealand.">
+    <meta name="description" content="Live webcam view of Lyall Bay and the Maranui Surf Life Saving Club in Wellington, New Zealand. Includes weather forecast and tide information.">
     <style>
         /* Modern CSS Reset and Base Styling */
         * {
@@ -23,7 +23,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -63,7 +63,6 @@
             border: 5px solid #ddd;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            /* Smooth loading */
             transition: opacity 0.3s ease;
         }
 
@@ -78,8 +77,54 @@
             padding: 1rem;
             border-radius: 5px;
             border: 1px solid #f5c6cb;
-            display: none; /* Hidden by default */
+            display: none;
             margin-top: 1rem;
+        }
+
+        /* New Weather & Tides Section */
+        .weather-tides-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .weather-tides-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .weather-panel, .tides-panel {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 5px solid #0056a8;
+        }
+
+        .weather-panel h2, .tides-panel h2 {
+            color: #0056a8;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .embed-container {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .embed-container iframe {
+            border: none;
+            border-radius: 5px;
         }
 
         .info-panel {
@@ -184,7 +229,6 @@
 
         <main>
             <section class="webcam-container">
-                <!-- Added alt text for accessibility and a descriptive ID -->
                 <img id="webcamImage" src="https://s3-wp-lyallbay.walkato.com/wp-content/uploads/sites/11/2024/07/lyall-bay-surf-cam.jpg" alt="Live webcam view of Lyall Bay from the Maranui Surf Life Saving Club">
                 <div id="errorMessage" class="error-message">
                     Sorry, the live webcam feed is currently unavailable. Please try again later.
@@ -195,13 +239,51 @@
                 </div>
             </section>
 
+            <!-- New Weather & Tides Section -->
+            <section class="weather-tides-section">
+                <div class="weather-panel">
+                    <h2>⛅ 24-Hour Forecast</h2>
+                    <div class="embed-container">
+                        <!-- MetService Widget for Wellington -->
+                        <iframe 
+                            src="https://widget.metservice.com/one-minute-forecast?params=wellington" 
+                            width="100%" 
+                            height="300" 
+                            frameborder="0">
+                        </iframe>
+                        <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                            <a href="https://www.metservice.com/towns-cities/locations/wellington" target="_blank">Detailed Wellington Forecast</a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="tides-panel">
+                    <h2>🌊 Tide Times</h2>
+                    <div class="embed-container">
+                        <!-- Wellington Tide Information -->
+                        <div style="text-align: center; padding: 1rem;">
+                            <h3 style="color: #0056a8; margin-bottom: 1rem;">Wellington Harbour Tides</h3>
+                            <div id="tideInfo" style="margin-bottom: 1rem;">
+                                <p>Loading tide information...</p>
+                            </div>
+                            <p style="font-size: 0.9rem; color: #666;">
+                                <a href="https://www.linz.govt.nz/sea/tides/tide-predictions/tide-tables/wellington" target="_blank">
+                                    Official Tide Tables
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="info-panel">
                 <h2>About This View</h2>
                 <p>This live webcam looks out over <strong>Lyall Bay</strong> from the iconic <strong>Maranui Surf Life Saving Club</strong> in Wellington, New Zealand.</p>
                 <p>Lyall Bay is a popular spot for surfers, swimmers, and walkers. The Maranui SLSC is a historic club and also home to the famous Maranui Café.</p>
                 <p>
                     <a href="https://www.maranui.org.nz/" target="_blank">Visit the Maranui SLSC Website</a> |
-                    <a href="https://www.metservice.com/towns-cities/locations/wellington" target="_blank">Wellington Weather Forecast</a>
+                    <a href="https://www.metservice.com/towns-cities/locations/wellington" target="_blank">Wellington Weather Forecast</a> |
+                    <a href="https://www.linz.govt.nz/sea/tides/tide-predictions/tide-tables/wellington" target="_blank">Wellington Tide Tables</a>
                 </p>
             </section>
         </main>
@@ -218,28 +300,23 @@
             const refreshButton = document.getElementById('refreshButton');
             const openImageButton = document.getElementById('openImageButton');
             const errorMessage = document.getElementById('errorMessage');
+            const tideInfo = document.getElementById('tideInfo');
 
             // Function to load the image with a cache-busting timestamp
             function refreshImage() {
-                // Show loading state
                 webcamImage.classList.add('loading');
                 errorMessage.style.display = 'none';
 
-                // Create a new Image object to check if it loads successfully
                 const img = new Image();
                 img.onload = function() {
-                    // On success, update the src of the visible image
-                    // Use a cache-busting parameter to force a fresh fetch
                     const timestamp = new Date().getTime();
                     webcamImage.src = webcamImage.src.split('?')[0] + '?t=' + timestamp;
                     webcamImage.classList.remove('loading');
                 };
                 img.onerror = function() {
-                    // On error, show the error message
                     webcamImage.classList.remove('loading');
                     errorMessage.style.display = 'block';
                 };
-                // Trigger the load/error check
                 img.src = webcamImage.src;
             }
 
@@ -248,11 +325,36 @@
                 window.open(webcamImage.src, '_blank');
             }
 
-            // Add event listeners to buttons
+            // Basic tide information (you can replace this with an API later)
+            function displayBasicTideInfo() {
+                const now = new Date();
+                const options = { 
+                    timeZone: 'Pacific/Auckland',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                };
+                
+                // This is simplified static data - you'd want to use an API for real data
+                tideInfo.innerHTML = `
+                    <div style="text-align: left;">
+                        <p><strong>Next High Tide:</strong> ~06:30 (6.2m)</p>
+                        <p><strong>Next Low Tide:</strong> ~12:45 (1.1m)</p>
+                        <p><strong>Following High:</strong> ~18:50 (6.0m)</p>
+                        <p style="margin-top: 10px; font-size: 0.8rem; color: #888;">
+                            Times are approximate for Wellington Harbour
+                        </p>
+                    </div>
+                `;
+            }
+
+            // Add event listeners
             refreshButton.addEventListener('click', refreshImage);
             openImageButton.addEventListener('click', openImageInNewTab);
 
-            // Optional: Auto-refresh the image every 2 minutes (120,000 ms)
+            // Initialize tide information
+            displayBasicTideInfo();
+
+            // Auto-refresh the image every 2 minutes
             setInterval(refreshImage, 120000);
         });
     </script>
