@@ -16,12 +16,14 @@
     </div>
   </header>
 
+  <!-- Top chips: sunrise/sunset + tides -->
   <div class="info-chips">
     <div id="sunChip" class="chip sun"></div>
     <div id="tideChip" class="chip tide"></div>
   </div>
   
   <main class="content" role="main">
+    <!-- Camera -->
     <section class="camera-section" aria-label="Live camera">
       <div class="cam">
         <div class="overlay top" aria-hidden="true"></div>
@@ -39,6 +41,7 @@
         <div class="overlay bottom" aria-hidden="true"></div>
       </div>
 
+      <!-- Camera toggle -->
       <div class="switch-row">
         <button id="camToggle"
           class="toggle toggle--surf"
@@ -53,12 +56,11 @@
       </div>
     </section>
 
-    <!-- Removed the empty sunrise/sunset icons section -->
-
+    <!-- 24h Conditions Table (kept as is) -->
     <section class="conditions" aria-label="24-hour forecast">
       <h2 class="panel-title">24-Hour Forecast — Lyall Bay (metric)</h2>
       <div class="table-scroll" role="region" aria-live="polite">
-        <table id="condTable" class="cond-table">
+        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
           <thead id="thead"></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -67,6 +69,10 @@
         <span id="dataStatus" class="status-chip">—</span>
         <span id="updatedAt" class="status-chip faint" aria-live="polite">—</span>
       </div>
+      <p id="tableHelp" class="panel-note">
+        Columns are hours (00–23). Rows show wave height, period, wind, gusts, direction, rain, tide height, and surfability.
+        Night hours are shaded. Auto-refresh every 30 minutes.
+      </p>
     </section>
   </main>
 
@@ -77,6 +83,7 @@
     </p>
   </footer>
 
+  <!-- Service Worker -->
   <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
