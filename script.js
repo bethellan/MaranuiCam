@@ -1,53 +1,183 @@
-// ===== v6.4.1 Table-fix build =====
+// ===== v6.4.2 iOS Autoplay Fix =====
 
 const LAT = -41.327, LON = 174.794;
-const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0";
-const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0";
+const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
+const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 
 const frame = document.getElementById("liveFrame");
 const camToggle = document.getElementById("camToggle");
 let showingSurf = true;
+let youtubeAPIReady = false;
 
+// Load YouTube IFrame API
+function loadYouTubeAPI() {
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+}
+
+// YouTube API ready callback
+window.onYouTubeIframeAPIReady = function() {
+  youtubeAPIReady = true;
+  console.log("YouTube API ready");
+  initializeVideo();
+};
+
+let player;
+function initializeVideo() {
+  if (!frame) return;
+  
+  player = new YT.Player(frame, {
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerReady(event) {
+  console.log("YouTube player ready");
+  // Try to play video
+  setTimeout(() => {
+    event.target.playVideo();
+  }, 1000);
+}
+
+function onPlayerStateChange(event) {
+  // Handle playback issues
+  if (event.data === YT.PlayerState.PLAYING) {
+    console.log("Video playing successfully");
+  } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+    console.log("Video paused/ended - attempting to restart");
+    setTimeout(() => player.playVideo(), 500);
+  }
+}
+
+// Enhanced iOS autoplay with multiple strategies
+function forceIOSAutoplay() {
+  if (!frame) return;
+  
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  
+  if (isIOS) {
+    console.log("iOS detected - applying autoplay workarounds");
+    
+    // Strategy 1: Reload with autoplay parameters
+    const reloadWithAutoplay = () => {
+      const currentSrc = frame.src;
+      const separator = currentSrc.includes('?') ? '&' : '?';
+      const newSrc = `${currentSrc}${separator}autoplay=1&mute=1`;
+      frame.src = newSrc;
+    };
+    
+    // Strategy 2: Create a user interaction handler
+    const handleUserInteraction = () => {
+      if (player && typeof player.playVideo === 'function') {
+        player.playVideo();
+      } else {
+        reloadWithAutoplay();
+      }
+      // Remove listeners after first interaction
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
+    };
+    
+    // Add interaction listeners
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    
+    // Strategy 3: Programmatic trigger after delay
+    setTimeout(() => {
+      if (player && typeof player.playVideo === 'function') {
+        player.playVideo();
+      }
+    }, 2000);
+    
+    // Strategy 4: Add play button overlay for iOS
+    addIOSPlayButton();
+  }
+}
+
+// Add a visible play button for iOS users
+function addIOSPlayButton() {
+  const playOverlay = document.createElement('div');
+  playOverlay.innerHTML = `
+    <div style="
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      background: rgba(230, 57, 70, 0.9); 
+      color: white; 
+      padding: 12px 24px; 
+      border-radius: 50px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      z-index: 10;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    ">
+      ▶ Tap to Play Video
+    </div>
+  `;
+  
+  playOverlay.style.position = 'relative';
+  playOverlay.style.width = '100%';
+  playOverlay.style.height = '0';
+  playOverlay.style.zIndex = '5';
+  
+  const camSection = document.querySelector('.cam');
+  if (camSection) {
+    camSection.appendChild(playOverlay);
+    
+    // Remove overlay when clicked
+    playOverlay.addEventListener('click', () => {
+      if (player && typeof player.playVideo === 'function') {
+        player.playVideo();
+      } else {
+        frame.src += '&autoplay=1';
+      }
+      playOverlay.remove();
+    });
+  }
+}
+
+// Camera toggle function
 function setToggle() {
   camToggle.classList.toggle("toggle--surf", showingSurf);
   camToggle.classList.toggle("toggle--airport", !showingSurf);
 }
+
 camToggle.addEventListener("click", () => {
   showingSurf = !showingSurf;
   setToggle();
   frame.style.opacity = "0";
+  
   setTimeout(() => {
     frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
     frame.style.opacity = "1";
+    
+    // Re-initialize YouTube API for new video
+    setTimeout(() => {
+      if (window.YT && youtubeAPIReady) {
+        initializeVideo();
+      }
+      forceIOSAutoplay();
+    }, 500);
   }, 250);
 });
-setToggle();
 
-// Force autoplay on load for iOS/Safari
-// --- Force autoplay on iOS / Safari ---
+// Initialize on load
 window.addEventListener("load", () => {
-  const frame = document.getElementById("liveFrame");
-  if (!frame) return;
-
-  // 1️⃣ Ensure autoplay/mute params exist
-  if (!frame.src.includes("autoplay=1")) {
-    frame.src += (frame.src.includes("?") ? "&" : "?") + "autoplay=1&mute=1&playsinline=1";
-  }
-
-  // 2️⃣ Create a short “touch” event to count as user interaction
-  const poke = () => {
-    const temp = frame.src;
-    frame.src = "";
-    setTimeout(() => (frame.src = temp), 250);
-    document.removeEventListener("touchstart", poke);
-  };
-
-  // 3️⃣ Trigger automatically or via first tap
-  setTimeout(poke, 1200); // auto poke after 1.2s
-  document.addEventListener("touchstart", poke, { once: true });
+  setToggle();
+  
+  // Load YouTube API
+  loadYouTubeAPI();
+  
+  // Apply iOS autoplay workarounds
+  setTimeout(forceIOSAutoplay, 1000);
 });
-
-
 
 document.getElementById("dateLabel").textContent =
   new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
@@ -156,8 +286,6 @@ function buildTable(d) {
     tbody.appendChild(tr);
   });
 
- 
-
   // Surfability
   const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
   const tr=document.createElement("tr");
@@ -174,13 +302,12 @@ function buildTable(d) {
   badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
 }
 
-
 function isNight(d,h){
   const hh = (h instanceof Date)? h : d.labelHours[h];
   return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
 }
- /* ---------- Sunrise / Sunset + Tide Extremes Display ---------- */
 
+/* ---------- Sunrise / Sunset + Tide Extremes Display ---------- */
 function findTideExtremes(tideHeights, hours) {
   if (!tideHeights || !hours || tideHeights.length < 3) {
     return { nextHigh: new Date(), nextLow: new Date() };
@@ -233,7 +360,6 @@ function updateChips(d) {
   }
 }
 
-
 /* ---------- Scoring ---------- */
 function score(wave,wind,rain,dir){
   if(wave==null) return 0;
@@ -261,5 +387,7 @@ async function refresh(){
     document.getElementById("dataStatus").textContent = "❌ Error";
   }
 }
+
+// Initialize the app
 refresh();
 setInterval(refresh,30*60*1000);
