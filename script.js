@@ -275,8 +275,9 @@ function updateChips(d) {
   const tideChip = document.getElementById("tideChip");
   if (tideChip && d.tide && d.labelHours && d.tide.length > 0) {
     const tides = findTideExtremes(d.tide, d.labelHours);
-    tideChip.innerHTML = `🌊 High: ${tides.nextHigh.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} | ` +
-                         `Low: ${tides.nextLow.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+    tideChip.innerHTML =  `🌊 Highs: ${tides.highs.map(t => t.time.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false})).join(", ")} ` +
+  `| Lows: ${tides.lows.map(t => t.time.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false})).join(", ")}`;
+
   } else if (tideChip) {
     tideChip.innerHTML = `🌊 Tide data loading...`;
   }
