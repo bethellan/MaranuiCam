@@ -73,16 +73,32 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 4px 0 8px;
+  margin: 12px auto;
   flex-wrap: wrap;
+  justify-content: center;
+  max-width: 1200px;
+  padding: 0 12px;
 }
+
 .chip.sun, .chip.tide {
-  background: #f7fbff;
+  background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 13px;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 14px;
   color: #333;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.chip.sun {
+  background: linear-gradient(135deg, #fff9e6, #fff);
+  border-color: #ffd54f;
+}
+
+.chip.tide {
+  background: linear-gradient(135deg, #e6f7ff, #fff);
+  border-color: #4fc3f7;
 }
 
 
