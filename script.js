@@ -257,8 +257,10 @@ function findTideExtremes(tideHeights, hours) {
   const nextHigh = highs.find(t => t.time > now) || highs[0];
   const nextLow = lows.find(t => t.time > now) || lows[0];
   return {
-    nextHigh: nextHigh ? nextHigh.time : new Date(now.getTime() + 6 * 3600000),
-    nextLow: nextLow ? nextLow.time : new Date(now.getTime() + 12 * 3600000)
+    highs,
+    lows,
+    nextHigh: highs.find(t => t.time > now) || highs[0],
+    nextLow: lows.find(t => t.time > now) || lows[0]
   };
 }
 
@@ -267,8 +269,8 @@ function updateChips(d) {
   const sunset = new Date(d.sunset);
   const sunChip = document.getElementById("sunChip");
   if (sunChip) {
-    sunChip.innerHTML = `🌅 ${sunrise.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}  ` +
-                        `🌇 ${sunset.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+    sunChip.innerHTML = `🌅 ${sunrise.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", hour12: false})}  ` +
+                        `🌇 ${sunset.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false})}`;
   }
   const tideChip = document.getElementById("tideChip");
   if (tideChip && d.tide && d.labelHours && d.tide.length > 0) {
