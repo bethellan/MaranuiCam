@@ -1,4 +1,4 @@
-// ===== v6.1 Logic: Wing bars (repeat-x), Surf/Airport switch, 24h table, shading, surfability =====
+// ===== v6.2 Logic (solid red banners): Slim wing bars, robust table with fallback + status chip =====
 
 // Year
 document.getElementById('year').textContent = new Date().getFullYear();
@@ -34,76 +34,78 @@ function todayLabel(){
 }
 document.getElementById('dateLabel').textContent = todayLabel();
 
-// Fetch Open-Meteo
+// Fallback generator (if live calls fail)
+function makeFallback(){
+  const now = new Date(); const base = new Date(now); base.setMinutes(0,0,0);
+  const hours = Array.from({length:24}, (_,i)=> new Date(base.getTime()+i*3600*1000));
+  const wave = hours.map((_,i)=> +(1.0 + 0.6*Math.sin(i/3)).toFixed(1));
+  const waveP= hours.map((_,i)=> 9 + Math.round(2*Math.sin(i/4)));
+  const wind = hours.map((_,i)=> 12 + Math.round(8*Math.cos(i/5)));
+  const gusts= wind.map(v=> v + 6);
+  const windDir = hours.map((_,i)=> (300 + (i%6)*5) % 360);
+  const rain = hours.map((_,i)=> (i%7===0)? +(Math.random()*1.2).toFixed(1): 0);
+  const tide = hours.map((_,i)=> +(1.2 + 0.6*Math.sin(i/3)).toFixed(2));
+  const sunrise = new Date(base); sunrise.setHours(7,0,0,0);
+  const sunset  = new Date(base); sunset.setHours(19,0,0,0);
+  const nightCols = new Set();
+  hours.forEach((h, idx)=>{ if(h < sunrise || h >= sunset) nightCols.add(idx); });
+  return {labelHours:hours, wave, waveP, wind, gusts, windDir, rain, tide, nightCols, sunrise, sunset, offline:true};
+}
+
+// Fetch Open-Meteo with resilience
 async function fetchData(){
   const now = new Date();
   const baseHour = new Date(now); baseHour.setMinutes(0,0,0);
-
   const hours = Array.from({length:24}, (_,i)=> new Date(baseHour.getTime() + i*3600*1000));
 
   const forecastURL = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`;
   const marineURL   = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`;
   const tideURL     = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
 
-  const [fRes, mRes, tRes] = await Promise.all([fetch(forecastURL), fetch(marineURL), fetch(tideURL)]);
-  const [f, m, t] = await Promise.all([fRes.json(), mRes.json(), tRes.json()]);
-
-  // Index maps
-  const idxF = Object.fromEntries((f.hourly.time||[]).map((t,i)=>[t,i]));
-  const idxM = Object.fromEntries((m.hourly.time||[]).map((t,i)=>[t,i]));
-  const idxT = Object.fromEntries((t.hourly?.time||[]).map((tt,i)=>[tt,i]));
-  const toISOhr = d => new Date(d).toISOString().slice(0,13)+":00";
-
-  // Build arrays
-  const labelHours = [], wind=[], gusts=[], windDir=[], rain=[], wave=[], waveP=[], waveD=[], tide=[];
-  hours.forEach(h=>{
-    const iso = toISOhr(h);
-    const iF = idxF[iso], iM = idxM[iso], iT = idxT[iso];
-    labelHours.push(h);
-    wind.push(iF!=null? f.hourly.wind_speed_10m[iF] : null);
-    gusts.push(iF!=null? f.hourly.wind_gusts_10m?.[iF] ?? null : null);
-    windDir.push(iF!=null? f.hourly.wind_direction_10m[iF] : null);
-    rain.push(iF!=null? f.hourly.precipitation[iF] : null);
-    wave.push(iM!=null? m.hourly.wave_height[iM] : null);
-    waveP.push(iM!=null? m.hourly.wave_period[iM] : null);
-    waveD.push(iM!=null? m.hourly.wave_direction[iM] : null);
-    tide.push(iT!=null? t.hourly.tide_height[iT] : null);
-  });
-
-  // Sunrise/sunset
-  const sunrise0 = new Date(f.daily.sunrise[0]);
-  const sunset0  = new Date(f.daily.sunset[0]);
-  const sunrise1 = f.daily.sunrise[1] ? new Date(f.daily.sunrise[1]) : null;
-
-  document.getElementById('sunriseLabel').textContent = sunrise0.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  document.getElementById('sunsetLabel').textContent  = sunset0.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-  // Next high/low tides
   try{
-    const times = t.hourly?.time||[];
-    const heights = t.hourly?.tide_height||[];
-    const nowD = new Date();
-    let nextHigh=null, nextLow=null;
-    for(let i=1;i<heights.length-1;i++){
-      const prev=heights[i-1], cur=heights[i], nxt=heights[i+1];
-      const tt=new Date(times[i]);
-      if(tt<=nowD) continue;
-      if(cur>prev && cur>nxt && !nextHigh) nextHigh=tt;
-      if(cur<prev && cur<nxt && !nextLow) nextLow=tt;
-      if(nextHigh && nextLow) break;
+    const [fRes, mRes, tRes] = await Promise.all([fetch(forecastURL), fetch(marineURL), fetch(tideURL)]);
+    if(!fRes.ok || !mRes.ok || !tRes.ok) throw new Error('HTTP failure');
+    const [f, m, t] = await Promise.all([fRes.json(), mRes.json(), tRes.json()]);
+
+    if(!f?.hourly?.time?.length || !m?.hourly?.time?.length){
+      throw new Error('Empty data');
     }
-    if(nextHigh) document.getElementById('tideHigh').textContent = nextHigh.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    if(nextLow)  document.getElementById('tideLow').textContent  = nextLow.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  }catch(e){ /* ignore */ }
 
-  // Night shading set
-  const nightCols = new Set();
-  labelHours.forEach((h, idx)=>{
-    if(h < sunrise0 || h >= sunset0) nightCols.add(idx);
-    if(sunset0 < labelHours[0] && sunrise1 && h < sunrise1) nightCols.add(idx);
-  });
+    const idxF = Object.fromEntries(f.hourly.time.map((t,i)=>[t,i]));
+    const idxM = Object.fromEntries(m.hourly.time.map((t,i)=>[t,i]));
+    const idxT = Object.fromEntries((t.hourly?.time||[]).map((tt,i)=>[tt,i]));
+    const toISOhr = d => new Date(d).toISOString().slice(0,13)+":00";
 
-  return {labelHours, wind, gusts, windDir, rain, wave, waveP, waveD, tide, nightCols};
+    const labelHours = [], wind=[], gusts=[], windDir=[], rain=[], wave=[], waveP=[], tide=[], waveD=[];
+    hours.forEach(h=>{
+      const iso = toISOhr(h);
+      const iF = idxF[iso], iM = idxM[iso], iT = idxT[iso];
+      labelHours.push(h);
+      wind.push(iF!=null? f.hourly.wind_speed_10m[iF] : null);
+      gusts.push(iF!=null? f.hourly.wind_gusts_10m?.[iF] ?? null : null);
+      windDir.push(iF!=null? f.hourly.wind_direction_10m[iF] : null);
+      rain.push(iF!=null? f.hourly.precipitation[iF] : null);
+      wave.push(iM!=null? m.hourly.wave_height[iM] : null);
+      waveP.push(iM!=null? m.hourly.wave_period[iM] : null);
+      waveD.push(iM!=null? m.hourly.wave_direction[iM] : null);
+      tide.push(iT!=null? t.hourly?.tide_height?.[iT] ?? null : null);
+    });
+
+    const sunrise0 = new Date(f.daily.sunrise[0]);
+    const sunset0  = new Date(f.daily.sunset[0]);
+    const sunrise1 = f.daily.sunrise[1] ? new Date(f.daily.sunrise[1]) : null;
+
+    const nightCols = new Set();
+    labelHours.forEach((h, idx)=>{
+      if(h < sunrise0 || h >= sunset0) nightCols.add(idx);
+      if(sunset0 < labelHours[0] && sunrise1 && h < sunrise1) nightCols.add(idx);
+    });
+
+    return {labelHours, wind, gusts, windDir, rain, wave, waveP, waveD, tide, nightCols, sunrise:sunrise0, sunset:sunset0, offline:false};
+  }catch(e){
+    console.warn('Falling back to offline sample:', e);
+    return makeFallback();
+  }
 }
 
 // Helpers
@@ -208,14 +210,39 @@ function buildTable(d){
   }
 }
 
-// Refresh cycle
+// Update status chips
+function updateStatus(off){
+  const chip = document.getElementById('dataStatus');
+  chip.textContent = off ? "📁 Offline sample" : "🌐 Live data";
+  chip.classList.toggle('offline', off);
+  chip.classList.toggle('live', !off);
+  const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('updatedAt').textContent = "Updated " + ts;
+}
+
+// Main refresh
 async function refresh(){
   try{
     const d = await fetchData();
+    // Labels for sunrise/sunset
+    document.getElementById('sunriseLabel').textContent = d.sunrise ? d.sunrise.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+    document.getElementById('sunsetLabel').textContent  = d.sunset  ? d.sunset.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})  : '—';
+    // Tide highs/lows best-effort (if offline, show friendly message)
+    if(d.offline){
+      document.getElementById('tideHigh').textContent = 'No data (check connection)';
+      document.getElementById('tideLow').textContent  = 'No data (check connection)';
+    }
     buildTable(d);
+    updateStatus(d.offline);
   }catch(e){
-    const tbody = document.getElementById('tbody');
-    tbody.innerHTML = '<tr><td colspan="25">Could not fetch conditions. Check connection.</td></tr>';
+    // Last-resort fallback: static sample
+    const d = makeFallback();
+    document.getElementById('sunriseLabel').textContent = d.sunrise.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('sunsetLabel').textContent  = d.sunset.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('tideHigh').textContent = 'No data (check connection)';
+    document.getElementById('tideLow').textContent  = 'No data (check connection)';
+    buildTable(d);
+    updateStatus(true);
   }
 }
 refresh();
