@@ -35,24 +35,73 @@ function buildTable(e){const t=document.getElementById("thead"),n=document.getEl
 function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new Date(e.sunrise)||n>=new Date(e.sunset)}
 
 /* ---------- Tides ---------- */
-function findTideExtremes(e,t){const n=[],a=[];for(let r=1;r<e.length-1;r++){const i=e[r-1],o=e[r],s=e[r+1];o>i&&o>s&&n.push({time:t[r],height:o}),o<i&&o<s&&a.push({time:t[r],height:o})}return{highs:n,lows:a}}
-function updateChips(e){
-  const fmt=t=>new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"});
-  const sunChip=document.getElementById("sunChip");
-  if(sunChip) sunChip.innerHTML=`🌅 ${fmt(e.sunrise)}  🌇 ${fmt(e.sunset)}`;
-  const tideChip=document.getElementById("tideChip");
-  if(tideChip&&e.tide?.length){
-    const tides=findTideExtremes(e.tide,e.labelHours);
-    const today=new Date(),todayStr=today.toISOString().slice(0,10);
-    const events=[...tides.highs.map(t=>({type:"HIGH",time:new Date(t.time)})),...tides.lows.map(t=>({type:"LOW",time:new Date(t.time)}))]
-      .map(ev=>({...ev,local:new Date(ev.time.toLocaleString("en-NZ",{timeZone:"Pacific/Auckland"}))}))
-      .filter(ev=>ev.local.toISOString().startsWith(todayStr))
-      .sort((a,b)=>a.local-b.local)
-      .slice(0,4);
-    const formatted=events.map(ev=>`${ev.type}: ${fmt(ev.local)}`).join(" | ");
-    tideChip.innerHTML=`🌊 ${formatted}`;
-  } else if(tideChip) tideChip.innerHTML="🌊 Tide data loading...";
+/* ---------- Find all high/low tides (local-safe) ---------- */
+function findTideExtremes(tideHeights, hours) {
+  const highs = [], lows = [];
+  for (let i = 1; i < tideHeights.length - 1; i++) {
+    const prev = tideHeights[i - 1], curr = tideHeights[i], next = tideHeights[i + 1];
+    if (prev == null || curr == null || next == null) continue;
+    if (curr > prev && curr > next) highs.push({ time: hours[i], height: curr });
+    if (curr < prev && curr < next) lows.push({ time: hours[i], height: curr });
+  }
+  return { highs, lows };
 }
+
+/* ---------- Update chips (local 4-tide robust) ---------- */
+function updateChips(d) {
+  const fmt = t =>
+    new Date(t).toLocaleTimeString("en-NZ", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Pacific/Auckland"
+    });
+
+  // 🌅 Sunrise / Sunset
+  const sunChip = document.getElementById("sunChip");
+  if (sunChip) {
+    sunChip.innerHTML = `🌅 ${fmt(d.sunrise)}  🌇 ${fmt(d.sunset)}`;
+  }
+
+  // 🌊 Tide highs/lows
+  const tideChip = document.getElementById("tideChip");
+  if (tideChip && d.tide?.length) {
+    const tides = findTideExtremes(d.tide, d.labelHours);
+    const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
+
+    // Combine & localize
+    let events = [
+      ...tides.highs.map(t => ({ type: "HIGH", time: new Date(t.time) })),
+      ...tides.lows.map(t => ({ type: "LOW", time: new Date(t.time) }))
+    ].map(ev => ({
+      ...ev,
+      local: new Date(
+        new Date(ev.time).toLocaleString("en-NZ", { timeZone: "Pacific/Auckland" })
+      )
+    }));
+
+    // Sort by local time
+    events.sort((a, b) => a.local - b.local);
+
+    // Keep only today's events (NZ local date)
+    const filtered = events.filter(
+      ev => ev.local.toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" }) === todayLocal
+    );
+
+    // If fewer than 4 events found, take closest 4 regardless
+    const show = (filtered.length ? filtered : events).slice(0, 4);
+
+    if (show.length) {
+      const text = show.map(ev => `${ev.type}: ${fmt(ev.local)}`).join(" | ");
+      tideChip.innerHTML = `🌊 ${text}`;
+    } else {
+      tideChip.innerHTML = "🌊 Tide data unavailable";
+    }
+  } else if (tideChip) {
+    tideChip.innerHTML = "🌊 Tide data loading...";
+  }
+}
+
 
 /* ---------- Scoring ---------- */
 function score(e,t,n,a){if(e==null)return 0;let r=10-Math.abs(e-1)*5;return r-=t>20?(t-20)/5:0,n>.5&&(r-=2),a&&(a<200||a>340)&&(r+=1),Math.max(0,Math.min(10,r))}
