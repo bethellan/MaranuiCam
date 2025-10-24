@@ -382,3 +382,17 @@ async function refresh() {
 // Initialize
 refresh();
 setInterval(refresh, 30 * 60 * 1000); // Refresh every 30 minutes
+
+// Force reload if files changed on server (every 6 hours)
+setInterval(() => {
+  fetch('version.txt?cacheBust=' + Date.now())
+    .then(res => res.text())
+    .then(ver => {
+      if (localStorage.getItem('lastVersion') && localStorage.getItem('lastVersion') !== ver) {
+        console.log('New version detected — reloading…');
+        location.reload(true);
+      }
+      localStorage.setItem('lastVersion', ver);
+    });
+}, 1000 * 60 * 10); // check every 10 minutes
+
