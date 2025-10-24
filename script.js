@@ -1,5 +1,4 @@
-// ===== v6.4.2 iOS Autoplay Fix =====
-
+// ===== v6.4.3 iOS Autoplay Reliability + Cleanup =====
 const LAT = -41.327, LON = 174.794;
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
@@ -8,6 +7,10 @@ const frame = document.getElementById("liveFrame");
 const camToggle = document.getElementById("camToggle");
 let showingSurf = true;
 let youtubeAPIReady = false;
+let player;
+let overlayAdded = false;
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 // Load YouTube IFrame API
 function loadYouTubeAPI() {
@@ -20,14 +23,11 @@ function loadYouTubeAPI() {
 // YouTube API ready callback
 window.onYouTubeIframeAPIReady = function() {
   youtubeAPIReady = true;
-  console.log("YouTube API ready");
-  initializeVideo();
+  initPlayer();
 };
 
-let player;
-function initializeVideo() {
-  if (!frame) return;
-  
+function initPlayer() {
+  if (!frame || !youtubeAPIReady) return;
   player = new YT.Player(frame, {
     events: {
       'onReady': onPlayerReady,
@@ -37,113 +37,58 @@ function initializeVideo() {
 }
 
 function onPlayerReady(event) {
-  console.log("YouTube player ready");
-  // Try to play video
+  // Try to play as soon as ready
+  tryPlay();
+  // Also wire user-gesture helpers (for iOS policy)
+  ['touchstart','click'].forEach(evt => {
+    document.addEventListener(evt, () => tryPlay(true), { once: true });
+  });
+}
+
+function tryPlay(fromGesture=false){
+  if (!player || typeof player.playVideo !== 'function') return;
+  // Always muted per policy
+  try { player.mute && player.mute(); } catch(e){}
+  // Attempt play
+  setTimeout(() => { try { player.playVideo(); } catch(e){} }, fromGesture ? 0 : 300);
+  // After 3s, if not playing on iOS, show overlay
   setTimeout(() => {
-    event.target.playVideo();
-  }, 1000);
+    if (isIOS && !overlayAdded && !isPlaying()) addIOSOverlay();
+  }, 3000);
+}
+
+function isPlaying(){
+  try { return player && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING; }
+  catch { return false; }
 }
 
 function onPlayerStateChange(event) {
-  // Handle playback issues
   if (event.data === YT.PlayerState.PLAYING) {
-    console.log("Video playing successfully");
+    // Remove overlay if it exists
+    const overlay = document.querySelector('.ios-play-overlay');
+    if (overlay) overlay.remove();
+    overlayAdded = false;
   } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-    console.log("Video paused/ended - attempting to restart");
-    setTimeout(() => player.playVideo(), 500);
+    // light retry (don’t loop aggressively)
+    setTimeout(() => { try { player.playVideo(); } catch(e){} }, 800);
   }
 }
 
-// Enhanced iOS autoplay with multiple strategies
-function forceIOSAutoplay() {
-  if (!frame) return;
-  
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  
-  if (isIOS) {
-    console.log("iOS detected - applying autoplay workarounds");
-    
-    // Strategy 1: Reload with autoplay parameters
-    const reloadWithAutoplay = () => {
-      const currentSrc = frame.src;
-      const separator = currentSrc.includes('?') ? '&' : '?';
-      const newSrc = `${currentSrc}${separator}autoplay=1&mute=1`;
-      frame.src = newSrc;
-    };
-    
-    // Strategy 2: Create a user interaction handler
-    const handleUserInteraction = () => {
-      if (player && typeof player.playVideo === 'function') {
-        player.playVideo();
-      } else {
-        reloadWithAutoplay();
-      }
-      // Remove listeners after first interaction
-      document.removeEventListener('touchstart', handleUserInteraction);
-      document.removeEventListener('click', handleUserInteraction);
-    };
-    
-    // Add interaction listeners
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    
-    // Strategy 3: Programmatic trigger after delay
-    setTimeout(() => {
-      if (player && typeof player.playVideo === 'function') {
-        player.playVideo();
-      }
-    }, 2000);
-    
-    // Strategy 4: Add play button overlay for iOS
-    addIOSPlayButton();
-  }
+// Add a visible play button ONLY if autoplay fails
+function addIOSOverlay() {
+  const cam = document.querySelector('.cam');
+  if (!cam || overlayAdded) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'ios-play-overlay';
+  overlay.textContent = '▶ Tap to Play Video';
+  overlay.addEventListener('click', () => {
+    tryPlay(true);
+  });
+  cam.appendChild(overlay);
+  overlayAdded = true;
 }
 
-// Add a visible play button for iOS users
-function addIOSPlayButton() {
-  const playOverlay = document.createElement('div');
-  playOverlay.innerHTML = `
-    <div style="
-      position: absolute; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%); 
-      background: rgba(230, 57, 70, 0.9); 
-      color: white; 
-      padding: 12px 24px; 
-      border-radius: 50px; 
-      font-weight: bold; 
-      cursor: pointer; 
-      z-index: 10;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    ">
-      ▶ Tap to Play Video
-    </div>
-  `;
-  
-  playOverlay.style.position = 'relative';
-  playOverlay.style.width = '100%';
-  playOverlay.style.height = '0';
-  playOverlay.style.zIndex = '5';
-  
-  const camSection = document.querySelector('.cam');
-  if (camSection) {
-    camSection.appendChild(playOverlay);
-    
-    // Remove overlay when clicked
-    playOverlay.addEventListener('click', () => {
-      if (player && typeof player.playVideo === 'function') {
-        player.playVideo();
-      } else {
-        frame.src += '&autoplay=1';
-      }
-      playOverlay.remove();
-    });
-  }
-}
-
-// Camera toggle function
+// Camera toggle
 function setToggle() {
   camToggle.classList.toggle("toggle--surf", showingSurf);
   camToggle.classList.toggle("toggle--airport", !showingSurf);
@@ -153,34 +98,26 @@ camToggle.addEventListener("click", () => {
   showingSurf = !showingSurf;
   setToggle();
   frame.style.opacity = "0";
-  
   setTimeout(() => {
     frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
     frame.style.opacity = "1";
-    
-    // Re-initialize YouTube API for new video
+    // Re-init when src changes
     setTimeout(() => {
-      if (window.YT && youtubeAPIReady) {
-        initializeVideo();
-      }
-      forceIOSAutoplay();
-    }, 500);
-  }, 250);
+      if (window.YT && youtubeAPIReady) initPlayer();
+      tryPlay();
+    }, 400);
+  }, 200);
 });
 
-// Initialize on load
+// Initialize
 window.addEventListener("load", () => {
   setToggle();
-  
-  // Load YouTube API
   loadYouTubeAPI();
-  
-  // Apply iOS autoplay workarounds
-  setTimeout(forceIOSAutoplay, 1000);
+  document.getElementById("dateLabel").textContent =
+    new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
+  refresh();
+  setInterval(refresh, 30*60*1000);
 });
-
-document.getElementById("dateLabel").textContent =
-  new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
 
 /* ---------- Utility helpers ---------- */
 function toHourISO(d) { return new Date(d).toISOString().slice(0, 13) + ":00"; }
@@ -216,9 +153,7 @@ async function fetchData() {
   const tide     = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
 
   try {
-    const [fR, mR, tR] = await Promise.allSettled([
-      fetch(forecast), fetch(marine), fetch(tide)
-    ]);
+    const [fR, mR, tR] = await Promise.allSettled([ fetch(forecast), fetch(marine), fetch(tide) ]);
     const f = fR.value && fR.value.ok ? await fR.value.json() : {};
     const m = mR.value && mR.value.ok ? await mR.value.json() : {};
     const t = tR.value && tR.value.ok ? await tR.value.json() : {};
@@ -307,49 +242,34 @@ function isNight(d,h){
   return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
 }
 
-/* ---------- Sunrise / Sunset + Tide Extremes Display ---------- */
+/* ---------- Sunrise / Sunset + Tide Extremes ---------- */
 function findTideExtremes(tideHeights, hours) {
   if (!tideHeights || !hours || tideHeights.length < 3) {
     return { nextHigh: new Date(), nextLow: new Date() };
   }
-
   const highs = [], lows = [];
-  
-  // Find all high and low tides
   for (let i = 1; i < tideHeights.length - 1; i++) {
     const prev = tideHeights[i - 1], curr = tideHeights[i], next = tideHeights[i + 1];
-    if (curr > prev && curr > next) {
-      highs.push({ time: hours[i], height: curr });
-    }
-    if (curr < prev && curr < next) {
-      lows.push({ time: hours[i], height: curr });
-    }
+    if (curr > prev && curr > next) highs.push({ time: hours[i], height: curr });
+    if (curr < prev && curr < next) lows.push({ time: hours[i], height: curr });
   }
-
   const now = new Date();
-  
-  // Find next high tide after current time
   const nextHigh = highs.find(t => t.time > now) || highs[0];
   const nextLow = lows.find(t => t.time > now) || lows[0];
-
   return {
-    nextHigh: nextHigh ? nextHigh.time : new Date(now.getTime() + 6 * 3600000), // fallback +6h
-    nextLow: nextLow ? nextLow.time : new Date(now.getTime() + 12 * 3600000)   // fallback +12h
+    nextHigh: nextHigh ? nextHigh.time : new Date(now.getTime() + 6 * 3600000),
+    nextLow: nextLow ? nextLow.time : new Date(now.getTime() + 12 * 3600000)
   };
 }
 
 function updateChips(d) {
-  /* 🌅🌇 Sunrise / Sunset */
   const sunrise = new Date(d.sunrise);
   const sunset = new Date(d.sunset);
-  
   const sunChip = document.getElementById("sunChip");
   if (sunChip) {
     sunChip.innerHTML = `🌅 ${sunrise.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}  ` +
                         `🌇 ${sunset.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
   }
-
-  /* 🌊 Tide High / Low */
   const tideChip = document.getElementById("tideChip");
   if (tideChip && d.tide && d.labelHours && d.tide.length > 0) {
     const tides = findTideExtremes(d.tide, d.labelHours);
@@ -366,15 +286,14 @@ function score(wave,wind,rain,dir){
   let s=10 - Math.abs(wave-1)*5;
   s -= wind>20? (wind-20)/5 : 0;
   if(rain>0.5) s-=2;
-  if(dir && (dir<200||dir>340)) s+=1; // offshore bump
+  if(dir && (dir<200||dir>340)) s+=1; // offshore bump for typical southerly swell
   return Math.max(0,Math.min(10,s));
 }
 
 async function refresh(){
   const fallback = offlineData();
   buildTable(fallback);
-  updateChips(fallback); // Show fallback data immediately
-  
+  updateChips(fallback);
   document.getElementById("dataStatus").textContent = "⏳ loading...";
   try {
     const d = await fetchData();
@@ -387,7 +306,3 @@ async function refresh(){
     document.getElementById("dataStatus").textContent = "❌ Error";
   }
 }
-
-// Initialize the app
-refresh();
-setInterval(refresh,30*60*1000);

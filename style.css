@@ -1,4 +1,4 @@
-/* ===== Maranui SLSC Theme (v6.4) ===== */
+/* ===== Maranui SLSC Theme (v6.4.3) ===== */
 :root{
   --red:#e63946; --red-dark:#b82e38;
   --cream:#f1faee;
@@ -26,7 +26,7 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 .cam{position:relative; width:100%; max-width:1000px; margin:0 auto 8px; aspect-ratio:16/9; background:#000; overflow:hidden; border-radius:12px; box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .cam iframe{width:100%; height:100%; border:0; display:block; transition:opacity .25s ease}
 
-/* Wing overlay bars — 28px, solid red, seamless repeat-x, slow left→right */
+/* Wing overlay bars — solid red, slow left→right */
 .overlay{position:absolute; left:0; width:100%; height:35px; z-index:3;
   background-color: var(--red);
   background-image:url('assets/maranui-wing-band.png');
@@ -40,33 +40,28 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 .overlay.bottom{bottom:0}
 @keyframes drift{ from{background-position-x:0} to{background-position-x:210px} }
 
-/* iOS Play Button Override */
+/* iOS Play Button Overlay (only injected if autoplay fails) */
 .ios-play-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(230, 57, 70, 0.95);
+  background: rgba(230, 57, 70, 0.96);
   color: white;
   padding: 14px 28px;
   border-radius: 50px;
-  font-weight: bold;
+  font-weight: 800;
   cursor: pointer;
-  z-index: 10;
+  z-index: 20; /* above wing bars */
   text-align: center;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   border: 2px solid white;
   font-size: 16px;
+  user-select: none;
 }
 
-.ios-play-overlay:hover {
-  background: rgba(230, 57, 70, 1);
-}
+.ios-play-overlay:hover { background: rgba(230, 57, 70, 1); }
 
-/* Ensure camera section has proper positioning */
-.cam {
-  position: relative;
-}
 /* Gradient toggle: red ⇄ blue */
 .switch-row{display:flex; justify-content:center; margin:8px 0 12px}
 .toggle{
@@ -118,16 +113,8 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-.chip.sun {
-  background: linear-gradient(135deg, #fff9e6, #fff);
-  border-color: #ffd54f;
-}
-
-.chip.tide {
-  background: linear-gradient(135deg, #e6f7ff, #fff);
-  border-color: #4fc3f7;
-}
-
+.chip.sun { background: linear-gradient(135deg, #fff9e6, #fff); border-color: #ffd54f; }
+.chip.tide { background: linear-gradient(135deg, #e6f7ff, #fff); border-color: #4fc3f7; }
 
 /* Table */
 .panel-title{margin:0 0 8px; font-size:18px; color:var(--blue-dark)}
@@ -141,7 +128,7 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   font-weight: 700;
   padding: 8px 6px;
   text-align: center;
-  z-index: 3; /* ensure on top of body cells */
+  z-index: 3;
 }
 .cond-table tbody th {
   position: sticky;
@@ -151,81 +138,31 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   text-align: left;
   padding: 6px 8px;
   font-weight: 700;
-  z-index: 2; /* sits under header but above body cells */
+  z-index: 2;
 }
-/* keeps the corner cell ('Metric') pinned top-left */
-.cond-table thead th:first-child {
-  left: 0;
-  z-index: 4;
-  position: sticky;
-}
-/* scroll container */
-.table-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e9e9e9;
-  box-shadow: 0 2px 10px rgba(0,0,0,.06);
-}
+.cond-table thead th:first-child { left: 0; z-index: 4; position: sticky; }
+
+.table-scroll { overflow-x: auto; overflow-y: hidden; max-width: 100%; background: #fff; border-radius: 12px; border: 1px solid #e9e9e9; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
 
 .cond-table td{padding:6px 8px; text-align:center; font-size: 13px; border-bottom:1px solid #f1f1f1}
 .night{background:var(--night)}
-.scale-wave.low{background:#e8fff2} .scale-wave.ok{background:#d9f2e4} .scale-wave.high{background:#fff3cd} .scale-wave.very{background:#f8d7da}
-.scale-wind.low{background:#e8fff2} .scale-wind.med{background:#fff3cd} .scale-wind.high{background:#f8d7da}
 .scale-surf.good{background:#2ecc71; color:#fff} .scale-surf.fair{background:#f39c12; color:#fff} .scale-surf.poor{background:#e74c3c; color:#fff}
 .dir-arrow{display:inline-block; transform:rotate(0deg)}
 
-/* Subtle shadow to separate locked metric column */
-.cond-table tbody th {
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
-}
+.cond-table tbody th { box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05); }
+.cond-table thead th:first-child { z-index: 5; }
+.cond-table td { position: relative; overflow: visible; z-index: 1; }
+.dir-arrow { display: inline-block; transform-origin: center; margin-left: 4px; font-size: 12px; line-height: 1; position: relative; z-index: 2; transition: transform 0.4s ease; }
 
-.cond-table thead th:first-child {
-  z-index: 5;
-}
-/* Ensure arrows render above scrolling cells */
-.cond-table td {
-  position: relative; /* create local stacking context */
-  overflow: visible;  /* prevent clipping of inner content */
-  z-index: 1;
-}
-
-.dir-arrow {
-  display: inline-block;
-  transform-origin: center;
-  margin-left: 4px;
-  font-size: 12px;
-  line-height: 1;
-  position: relative;
-  z-index: 2; /* sits above cell */
-}
-
-
-.dir-arrow {
-  transition: transform 0.4s ease;
-}
-
-.table-scroll {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-}
-
-
+.table-scroll { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
 
 /* Status chips */
 .status-row{display:flex; gap:8px; align-items:center; margin:6px 2px 0}
 .status-chip{background:#f1f5f9; border:1px solid #e2e8f0; border-radius:999px; padding:4px 8px; font-size:12px}
-.status-chip.live{background:#e8fff2; border-color:#c9f2d9}
-.status-chip.offline{background:#fff5e6; border-color:#ffe0b2}
 .status-chip.faint{opacity:.7}
 
 /* Footer */
 .site-footer{padding:18px 12px; text-align:center; color:#333; opacity:.9}
 
 @media (max-width:640px){ .header-logo{height:24px} }
-
-@media (max-width:640px){
-  .cond-table td, .cond-table th { font-size: 12px; padding:4px 6px; }
-}
+@media (max-width:640px){ .cond-table td, .cond-table th { font-size: 12px; padding:4px 6px; } }

@@ -3,27 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui Webcam v6.4 – Surf & Airport Cams</title>
+  <title>Maranui Webcam v6.4.3 – Surf & Airport Cams</title>
   <meta name="theme-color" content="#e63946" />
-  <link rel="stylesheet" href="style.css?v=6.4" />
-  <script defer src="script.js?v=6.4"></script>
- 
-
-
+  <link rel="stylesheet" href="style.css?v=6.4.3" />
+  <script defer src="script.js?v=6.4.3"></script>
 </head>
 <body>
   <header class="site-header" role="banner">
     <div class="logo-row">
-      <!-- Optional header logo (not animated) -->
       <img src="assets/maranui-wing-band.png" alt="Maranui wings" class="header-logo" />
       <h1 class="site-title">Maranui Surf Life Saving Club — Live Cams & Conditions</h1>
     </div>
   </header>
 
   <div class="info-chips">
-  <div id="sunChip" class="chip sun"></div>
-  <div id="tideChip" class="chip tide"></div>
-</div>
+    <div id="sunChip" class="chip sun"></div>
+    <div id="tideChip" class="chip tide"></div>
+  </div>
   
   <main class="content" role="main">
     <!-- Camera -->
@@ -32,14 +28,14 @@
         <div class="overlay top" aria-hidden="true"></div>
 
         <iframe
-  id="liveFrame"
-  src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
-  allow="autoplay; fullscreen; picture-in-picture"
-  allowfullscreen
-  playsinline
-  frameborder="0">
-</iframe>
-
+          id="liveFrame"
+          title="Lyall Bay Live Surf Camera"
+          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowfullscreen
+          playsinline
+          frameborder="0">
+        </iframe>
 
         <div class="overlay bottom" aria-hidden="true"></div>
       </div>
@@ -88,11 +84,6 @@
           <strong id="sunsetLabel">—</strong>
         </div>
 
-        <!-- Single-line High / Low tide -->
- //       <div class="chip" title="Next tides">
- //         🌊 High <strong id="tideHigh">—</strong> | Low <strong id="tideLow">—</strong>
-//        </div>
-
         <!-- Surfability score -->
         <div class="chip score" id="scoreBadge" aria-live="polite">Surfability —</div>
 
@@ -128,18 +119,18 @@
 
   <footer class="site-footer" role="contentinfo">
     <p>
-      Maranui Webcam <strong>v6.4</strong> © Maranui Surf Life Saving Club ·
+      Maranui Webcam <strong>v6.4.3</strong> © Maranui Surf Life Saving Club ·
       Data from Open-Meteo & MetService (30 min refresh)
     </p>
   </footer>
 
-  <!-- SW: unregister old, register new -->
+  <!-- Service Worker: unregister old, register new -->
   <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.getRegistrations()
         .then(rs => rs.forEach(r => r.unregister()))
-        .finally(() => navigator.serviceWorker.register('sw.js?v=6.4').catch(console.warn));
+        .finally(() => navigator.serviceWorker.register('sw.js?v=6.4.3').catch(console.warn));
     });
   }
   </script>

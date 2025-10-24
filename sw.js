@@ -1,10 +1,10 @@
-// MaranuiCam Service Worker — v6.4
-const CACHE_NAME = 'maranui-v6_4';
+// MaranuiCam Service Worker — v6.4.3
+const CACHE_NAME = 'maranui-v6_4_3';
 const ASSETS = [
   './',
   './index.html',
-  './style.css?v=6.4',
-  './script.js?v=6.4'
+  './style.css?v=6.4.3',
+  './script.js?v=6.4.3'
 ];
 
 self.addEventListener('install', (event) => {
@@ -26,7 +26,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // Always try network for navigations to avoid stale pages
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -43,12 +42,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Prefer cache for our versioned CSS/JS
   if (req.url.includes('style.css') || req.url.includes('script.js')) {
     event.respondWith(caches.match(req).then(r => r || fetch(req)));
     return;
   }
 
-  // Default
   event.respondWith(fetch(req).catch(() => caches.match(req)));
 });
