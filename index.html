@@ -3,31 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui Webcam v6.4.4 – Surf & Airport Cams</title>
+  <title>Maranui Webcam v6.4.5 – Surf & Airport Cams</title>
   <meta name="theme-color" content="#e63946" />
   <link rel="stylesheet" href="style.css?v=6.4.3" />
-  <script defer src="script.js?v=6.4.4"></script>
+  <script defer src="script.js?v=6.4.5"></script>
 </head>
 <body>
-  <header class="site-header" role="banner">
+  <header class="site-header">
     <div class="logo-row">
       <img src="assets/maranui-wing-band.png" alt="Maranui wings" class="header-logo" />
       <h1 class="site-title">Maranui Surf Life Saving Club — Live Cams & Conditions</h1>
     </div>
   </header>
 
-  <!-- Top chips: sunrise/sunset + tides -->
+  <!-- Top info chips -->
   <div class="info-chips">
     <div id="sunChip" class="chip sun"></div>
     <div id="tideChip" class="chip tide"></div>
   </div>
-  
-  <main class="content" role="main">
-    <!-- Camera -->
-    <section class="camera-section" aria-label="Live camera">
-      <div class="cam">
-        <div class="overlay top" aria-hidden="true"></div>
 
+  <main class="content">
+    <!-- Camera -->
+    <section class="camera-section">
+      <div class="cam">
+        <div class="overlay top"></div>
         <iframe
           id="liveFrame"
           title="Lyall Bay Live Surf Camera"
@@ -37,18 +36,12 @@
           playsinline
           frameborder="0">
         </iframe>
-
-        <div class="overlay bottom" aria-hidden="true"></div>
+        <div class="overlay bottom"></div>
       </div>
 
       <!-- Camera toggle -->
       <div class="switch-row">
-        <button id="camToggle"
-          class="toggle toggle--surf"
-          type="button"
-          aria-label="Click to switch camera"
-          title="Click to switch camera"
-          aria-pressed="true">
+        <button id="camToggle" class="toggle toggle--surf" type="button">
           <span class="toggle__left">🏖️ Surf Cam</span>
           <span class="toggle__divider">⇄</span>
           <span class="toggle__right">✈️ Airport Cam</span>
@@ -56,20 +49,22 @@
       </div>
     </section>
 
-    <!-- 24h Conditions Table (kept as is) -->
-    <section class="conditions" aria-label="24-hour forecast">
+    <!-- Removed summary icons section -->
+
+    <!-- 24-hour forecast table -->
+    <section class="conditions">
       <h2 class="panel-title">24-Hour Forecast — Lyall Bay (metric)</h2>
-      <div class="table-scroll" role="region" aria-live="polite">
-        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
+      <div class="table-scroll">
+        <table id="condTable" class="cond-table">
           <thead id="thead"></thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
       <div class="status-row">
         <span id="dataStatus" class="status-chip">—</span>
-        <span id="updatedAt" class="status-chip faint" aria-live="polite">—</span>
+        <span id="updatedAt" class="status-chip faint">—</span>
       </div>
-      <p id="tableHelp" class="panel-note">
+      <p class="panel-note">
         Columns are hours (00–23). Rows show wave height, period, wind, gusts, direction, rain, tide height, and surfability.
         Night hours are shaded. Auto-refresh every 30 minutes.
       </p>
@@ -78,12 +73,11 @@
 
   <footer class="site-footer">
     <p>
-      Maranui Webcam <strong>v6.4.4</strong> © Maranui Surf Life Saving Club ·
+      Maranui Webcam <strong>v6.4.5</strong> © Maranui Surf Life Saving Club ·
       Data from Open-Meteo & MetService (30 min refresh)
     </p>
   </footer>
 
-  <!-- Service Worker -->
   <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
