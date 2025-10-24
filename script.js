@@ -70,15 +70,18 @@ function updateChips(d) {
     const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
 
     // Combine & localize
-    let events = [
-      ...tides.highs.map(t => ({ type: "HIGH", time: new Date(t.time) })),
-      ...tides.lows.map(t => ({ type: "LOW", time: new Date(t.time) }))
-    ].map(ev => ({
-      ...ev,
-      local: new Date(
-        new Date(ev.time).toLocaleString("en-NZ", { timeZone: "Pacific/Auckland" })
-      )
-    }));
+       // Make sure all times are parsed as UTC before converting to NZ local
+    const events = [
+      ...tides.highs.map(t => ({ type: "HIGH", time: t.time })),
+      ...tides.lows.map(t => ({ type: "LOW", time: t.time }))
+    ].map(ev => {
+      // Treat raw timestamp as UTC explicitly
+      const utc = typeof ev.time === "string" ? ev.time : ev.time.toISOString();
+      const utcDate = new Date(utc + "Z"); // force UTC parse
+      const local = new Date(utcDate.toLocaleString("en-NZ", { timeZone: "Pacific/Auckland" }));
+      return { ...ev, local };
+    });
+
 
     // Sort by local time
     events.sort((a, b) => a.local - b.local);
