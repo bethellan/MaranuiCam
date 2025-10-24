@@ -1,4 +1,4 @@
-// ===== v6.4.3 iOS Autoplay Reliability + Cleanup =====
+// ===== v6.4.4 MaranuiCam — precise sunrise/sunset + full 24h tides =====
 const LAT = -41.327, LON = 174.794;
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
@@ -37,9 +37,7 @@ function initPlayer() {
 }
 
 function onPlayerReady(event) {
-  // Try to play as soon as ready
   tryPlay();
-  // Also wire user-gesture helpers (for iOS policy)
   ['touchstart','click'].forEach(evt => {
     document.addEventListener(evt, () => tryPlay(true), { once: true });
   });
@@ -47,11 +45,8 @@ function onPlayerReady(event) {
 
 function tryPlay(fromGesture=false){
   if (!player || typeof player.playVideo !== 'function') return;
-  // Always muted per policy
   try { player.mute && player.mute(); } catch(e){}
-  // Attempt play
   setTimeout(() => { try { player.playVideo(); } catch(e){} }, fromGesture ? 0 : 300);
-  // After 3s, if not playing on iOS, show overlay
   setTimeout(() => {
     if (isIOS && !overlayAdded && !isPlaying()) addIOSOverlay();
   }, 3000);
@@ -64,17 +59,14 @@ function isPlaying(){
 
 function onPlayerStateChange(event) {
   if (event.data === YT.PlayerState.PLAYING) {
-    // Remove overlay if it exists
     const overlay = document.querySelector('.ios-play-overlay');
     if (overlay) overlay.remove();
     overlayAdded = false;
   } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-    // light retry (don’t loop aggressively)
     setTimeout(() => { try { player.playVideo(); } catch(e){} }, 800);
   }
 }
 
-// Add a visible play button ONLY if autoplay fails
 function addIOSOverlay() {
   const cam = document.querySelector('.cam');
   if (!cam || overlayAdded) return;
@@ -101,7 +93,6 @@ camToggle.addEventListener("click", () => {
   setTimeout(() => {
     frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
     frame.style.opacity = "1";
-    // Re-init when src changes
     setTimeout(() => {
       if (window.YT && youtubeAPIReady) initPlayer();
       tryPlay();
@@ -109,7 +100,6 @@ camToggle.addEventListener("click", () => {
   }, 200);
 });
 
-// Initialize
 window.addEventListener("load", () => {
   setToggle();
   loadYouTubeAPI();
@@ -119,7 +109,7 @@ window.addEventListener("load", () => {
   setInterval(refresh, 30*60*1000);
 });
 
-/* ---------- Utility helpers ---------- */
+/* ---------- Helpers ---------- */
 function toHourISO(d) { return new Date(d).toISOString().slice(0, 13) + ":00"; }
 function degToCompass(num) {
   const arr = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
@@ -144,6 +134,23 @@ function offlineData() {
     sunset: new Date().setHours(19,0,0,0),
     offline:true
   };
+}
+
+/* ---------- Fetch sunrise/sunset with minute precision ---------- */
+async function fetchSunTimes(lat, lon) {
+  try {
+    const resp = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
+    const json = await resp.json();
+    if (json.status === "OK") {
+      return {
+        sunrise: new Date(json.results.sunrise),
+        sunset: new Date(json.results.sunset)
+      };
+    }
+  } catch (e) {
+    console.warn("Sunrise-Sunset fetch failed:", e);
+  }
+  return { sunrise: new Date().setHours(7,0,0,0), sunset: new Date().setHours(19,0,0,0) };
 }
 
 /* ---------- Fetch + align Open-Meteo data ---------- */
@@ -193,7 +200,7 @@ async function fetchData() {
   }
 }
 
-/* ---------- Table building ---------- */
+/* ---------- Build table ---------- */
 function buildTable(d) {
   const thead = document.getElementById("thead");
   const tbody = document.getElementById("tbody");
@@ -221,7 +228,6 @@ function buildTable(d) {
     tbody.appendChild(tr);
   });
 
-  // Surfability
   const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
   const tr=document.createElement("tr");
   tr.innerHTML="<th>Surfability (1–10)</th>"+
@@ -242,45 +248,32 @@ function isNight(d,h){
   return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
 }
 
-/* ---------- Sunrise / Sunset + Tide Extremes ---------- */
+/* ---------- Find all high/low tides ---------- */
 function findTideExtremes(tideHeights, hours) {
-  if (!tideHeights || !hours || tideHeights.length < 3) {
-    return { nextHigh: new Date(), nextLow: new Date() };
+  const highs=[], lows=[];
+  for (let i=1;i<tideHeights.length-1;i++){
+    const prev=tideHeights[i-1], curr=tideHeights[i], next=tideHeights[i+1];
+    if (curr>prev && curr>next) highs.push({time:hours[i],height:curr});
+    if (curr<prev && curr<next) lows.push({time:hours[i],height:curr});
   }
-  const highs = [], lows = [];
-  for (let i = 1; i < tideHeights.length - 1; i++) {
-    const prev = tideHeights[i - 1], curr = tideHeights[i], next = tideHeights[i + 1];
-    if (curr > prev && curr > next) highs.push({ time: hours[i], height: curr });
-    if (curr < prev && curr < next) lows.push({ time: hours[i], height: curr });
-  }
-  const now = new Date();
-  const nextHigh = highs.find(t => t.time > now) || highs[0];
-  const nextLow = lows.find(t => t.time > now) || lows[0];
-  return {
-    highs,
-    lows,
-    nextHigh: highs.find(t => t.time > now) || highs[0],
-    nextLow: lows.find(t => t.time > now) || lows[0]
-  };
+  return { highs, lows };
 }
 
+/* ---------- Update chips ---------- */
 function updateChips(d) {
-  const sunrise = new Date(d.sunrise);
-  const sunset = new Date(d.sunset);
-  const sunChip = document.getElementById("sunChip");
-  if (sunChip) {
-    sunChip.innerHTML = `🌅 ${sunrise.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", hour12: false})}  ` +
-                        `🌇 ${sunset.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false})}`;
+  const sunChip=document.getElementById("sunChip");
+  if (sunChip){
+    sunChip.innerHTML=`🌅 ${new Date(d.sunrise).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}  `+
+                      `🌇 ${new Date(d.sunset).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}`;
   }
-  const tideChip = document.getElementById("tideChip");
-  if (tideChip && d.tide && d.labelHours && d.tide.length > 0) {
-    const tides = findTideExtremes(d.tide, d.labelHours);
-    tideChip.innerHTML =  `🌊 Highs: ${tides.highs.map(t => t.time.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false})).join(", ")} ` +
-  `| Lows: ${tides.lows.map(t => t.time.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false})).join(", ")}`;
 
-  } else if (tideChip) {
-    tideChip.innerHTML = `🌊 Tide data loading...`;
-  }
+  const tideChip=document.getElementById("tideChip");
+  if (tideChip && d.tide?.length){
+    const tides=findTideExtremes(d.tide,d.labelHours);
+    const highs=tides.highs.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
+    const lows=tides.lows.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
+    tideChip.innerHTML=`🌊 Highs: ${highs} | Lows: ${lows}`;
+  } else if (tideChip) tideChip.innerHTML="🌊 Tide data loading...";
 }
 
 /* ---------- Scoring ---------- */
@@ -289,23 +282,29 @@ function score(wave,wind,rain,dir){
   let s=10 - Math.abs(wave-1)*5;
   s -= wind>20? (wind-20)/5 : 0;
   if(rain>0.5) s-=2;
-  if(dir && (dir<200||dir>340)) s+=1; // offshore bump for typical southerly swell
+  if(dir && (dir<200||dir>340)) s+=1;
   return Math.max(0,Math.min(10,s));
 }
 
+/* ---------- Refresh cycle ---------- */
 async function refresh(){
-  const fallback = offlineData();
+  const fallback=offlineData();
   buildTable(fallback);
+  const sunTimes=await fetchSunTimes(LAT,LON);
+  fallback.sunrise=sunTimes.sunrise;
+  fallback.sunset=sunTimes.sunset;
   updateChips(fallback);
-  document.getElementById("dataStatus").textContent = "⏳ loading...";
-  try {
-    const d = await fetchData();
+  document.getElementById("dataStatus").textContent="⏳ loading...";
+  try{
+    const d=await fetchData();
+    const sun=await fetchSunTimes(LAT,LON);
+    d.sunrise=sun.sunrise; d.sunset=sun.sunset;
     buildTable(d);
     updateChips(d);
-    document.getElementById("dataStatus").textContent = d.offline ? "📁 Offline" : "🌐 Live";
-    document.getElementById("updatedAt").textContent = new Date().toLocaleTimeString();
-  } catch(e) {
-    console.error("Refresh failed:", e);
-    document.getElementById("dataStatus").textContent = "❌ Error";
+    document.getElementById("dataStatus").textContent=d.offline?"📁 Offline":"🌐 Live";
+    document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString();
+  }catch(e){
+    console.error("Refresh failed:",e);
+    document.getElementById("dataStatus").textContent="❌ Error";
   }
 }
