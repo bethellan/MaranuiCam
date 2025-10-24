@@ -1,15 +1,15 @@
-// MaranuiCam Service Worker — v6.3.2
-const CACHE_NAME = 'maranui-v6_3_2';
+// MaranuiCam Service Worker — v6.4
+const CACHE_NAME = 'maranui-v6_4';
 const ASSETS = [
   './',
   './index.html',
-  './style.css?v=6.3.2',
-  './script.js?v=6.3.2'
+  './style.css?v=6.4',
+  './script.js?v=6.4'
 ];
 
 self.addEventListener('install', (event) => {
-  // Clear all old caches immediately, then pre-cache shell
   event.waitUntil((async () => {
+    // Clear ALL old caches to avoid stale HTML/CSS/JS
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
     const cache = await caches.open(CACHE_NAME);
@@ -22,11 +22,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Network-first for navigation (HTML), cache-first for versioned assets
+// Network-first for navigations (HTML), cache-first for versioned assets
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // Always try network for navigations to avoid stale HTML
+  // Always try network for navigations to avoid stale pages
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -43,12 +43,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets with version query, prefer cache
+  // Prefer cache for our versioned CSS/JS
   if (req.url.includes('style.css') || req.url.includes('script.js')) {
     event.respondWith(caches.match(req).then(r => r || fetch(req)));
     return;
   }
 
-  // Default: just fetch
+  // Default
   event.respondWith(fetch(req).catch(() => caches.match(req)));
 });

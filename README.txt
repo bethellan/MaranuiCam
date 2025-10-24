@@ -1,7 +1,11 @@
-Maranui SLSC – Lyall Bay Webcam (v4)
-======================================
-- Autoplay (muted) stream with enlarged overlay bars.
-- Top & bottom banners = repeating winged 'M' pattern with gentle drift.
-- Live snapshot + next High/Low tide (rising/falling indicator).
-- 24-hour hourly table: tide height, wind (km/h), direction, waves (m), period (s), optimal highlight.
-- Refresh every 30 minutes; caches last result; PWA installable.
+# Maranui Webcam v6.4 — Deploy Guide
+
+## What’s in this build
+- Gradient Surf ⇄ Airport toggle (red → blue), labelled and keyboard accessible
+- SVG sunrise/sunset icons (no text)
+- Single-line High/Low tide chip
+- Fixed 24 h table (timezone-aligned, night shading, colour-coded surfability, auto-refresh)
+- Service Worker v6.4 (network-first, purges old caches)
+- Footer: “Maranui Webcam v6.4 © Maranui Surf Life Saving Club · Data from Open-Meteo & MetService (30 min refresh)”
+
+## Files to include
