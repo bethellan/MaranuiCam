@@ -142,10 +142,17 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   z-index: 2; /* sits above cell */
 }
 
+
+.dir-arrow {
+  transition: transform 0.4s ease;
+}
+
 .table-scroll {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
+
+
 
 /* Status chips */
 .status-row{display:flex; gap:8px; align-items:center; margin:6px 2px 0}
