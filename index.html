@@ -1,78 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui SLSC – Surf & Airport Live (v6.1)</title>
-  <meta name="theme-color" content="#e63946" />
-  <link rel="stylesheet" href="style.css" />
-  <script defer src="script.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Webcam - Maranui Surf Life Saving Club, Wellington NZ</title>
+    <meta name="description" content="Live webcam view of Lyall Bay and the Maranui Surf Life Saving Club in Wellington, New Zealand.">
+    <style>
+        /* Modern CSS Reset and Base Styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: #0056a8;
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        main {
+            padding: 2rem;
+        }
+
+        .webcam-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        #webcamImage {
+            max-width: 100%;
+            height: auto;
+            border: 5px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            /* Smooth loading */
+            transition: opacity 0.3s ease;
+        }
+
+        .loading {
+            opacity: 0.5;
+            filter: blur(2px);
+        }
+
+        .error-message {
+            color: #d9534f;
+            background-color: #f8d7da;
+            padding: 1rem;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+            display: none; /* Hidden by default */
+            margin-top: 1rem;
+        }
+
+        .info-panel {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 5px solid #0056a8;
+            margin-bottom: 2rem;
+        }
+
+        .info-panel h2 {
+            color: #0056a8;
+            margin-bottom: 1rem;
+        }
+
+        .info-panel p {
+            margin-bottom: 1rem;
+        }
+
+        .info-panel a {
+            color: #0056a8;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .info-panel a:hover {
+            text-decoration: underline;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        button {
+            background: #0056a8;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background: #004494;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            background: #e9ecef;
+            color: #6c757d;
+            font-size: 0.9rem;
+            border-top: 1px solid #dee2e6;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            header p {
+                font-size: 1rem;
+            }
+
+            main {
+                padding: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            button {
+                width: 100%;
+                max-width: 250px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="logo-row">
-      <img src="assets/maranui-wing-band.png" class="header-logo" alt="Maranui SLSC wing logo">
-      <h1 class="site-title">Maranui Surf Life Saving Club – Live Surf & Airport Cams</h1>
+    <div class="container">
+        <header>
+            <h1>Maranui Surf Cam</h1>
+            <p>Live view of Lyall Bay, Wellington, New Zealand</p>
+        </header>
+
+        <main>
+            <section class="webcam-container">
+                <!-- Added alt text for accessibility and a descriptive ID -->
+                <img id="webcamImage" src="https://s3-wp-lyallbay.walkato.com/wp-content/uploads/sites/11/2024/07/lyall-bay-surf-cam.jpg" alt="Live webcam view of Lyall Bay from the Maranui Surf Life Saving Club">
+                <div id="errorMessage" class="error-message">
+                    Sorry, the live webcam feed is currently unavailable. Please try again later.
+                </div>
+                <div class="controls">
+                    <button id="refreshButton">Refresh Image</button>
+                    <button id="openImageButton">Open Image in New Tab</button>
+                </div>
+            </section>
+
+            <section class="info-panel">
+                <h2>About This View</h2>
+                <p>This live webcam looks out over <strong>Lyall Bay</strong> from the iconic <strong>Maranui Surf Life Saving Club</strong> in Wellington, New Zealand.</p>
+                <p>Lyall Bay is a popular spot for surfers, swimmers, and walkers. The Maranui SLSC is a historic club and also home to the famous Maranui Café.</p>
+                <p>
+                    <a href="https://www.maranui.org.nz/" target="_blank">Visit the Maranui SLSC Website</a> |
+                    <a href="https://www.metservice.com/towns-cities/locations/wellington" target="_blank">Wellington Weather Forecast</a>
+                </p>
+            </section>
+        </main>
+
+        <footer>
+            <p>This is an unofficial page. Webcam image provided by <a href="https://www.raglan.net.nz/cameras/lyall-bay-surf-cam" target="_blank">Surf Cams NZ</a>.</p>
+            <p>Page last updated: <span id="lastUpdated">July 2024</span></p>
+        </footer>
     </div>
-  </header>
 
-  <main class="content">
-    <!-- Camera Section -->
-    <section class="camera-section">
-      <div class="cam">
-        <!-- Seamless wing overlay bars -->
-        <div class="overlay top" aria-hidden="true"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const webcamImage = document.getElementById('webcamImage');
+            const refreshButton = document.getElementById('refreshButton');
+            const openImageButton = document.getElementById('openImageButton');
+            const errorMessage = document.getElementById('errorMessage');
 
-        <iframe id="liveFrame"
-          title="Live Camera"
-          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0"
-          frameborder="0"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowfullscreen
-        ></iframe>
+            // Function to load the image with a cache-busting timestamp
+            function refreshImage() {
+                // Show loading state
+                webcamImage.classList.add('loading');
+                errorMessage.style.display = 'none';
 
-        <div class="overlay bottom" aria-hidden="true"></div>
-      </div>
+                // Create a new Image object to check if it loads successfully
+                const img = new Image();
+                img.onload = function() {
+                    // On success, update the src of the visible image
+                    // Use a cache-busting parameter to force a fresh fetch
+                    const timestamp = new Date().getTime();
+                    webcamImage.src = webcamImage.src.split('?')[0] + '?t=' + timestamp;
+                    webcamImage.classList.remove('loading');
+                };
+                img.onerror = function() {
+                    // On error, show the error message
+                    webcamImage.classList.remove('loading');
+                    errorMessage.style.display = 'block';
+                };
+                // Trigger the load/error check
+                img.src = webcamImage.src;
+            }
 
-      <!-- Surf / Airport switch -->
-      <div class="switch-row">
-        <button id="camSwitch" class="switch switch--surf" aria-pressed="true" aria-label="Toggle camera">
-          Surf <span class="divider">/</span> <span class="alt">Airport</span>
-        </button>
-      </div>
-    </section>
+            // Function to open the image in a new tab
+            function openImageInNewTab() {
+                window.open(webcamImage.src, '_blank');
+            }
 
-    <!-- Summary Panel -->
-    <section class="summary">
-      <div class="summary-row">
-        <div class="chip"><strong id="dateLabel">—</strong></div>
-        <div class="chip">☀️ Sunrise: <strong id="sunriseLabel">—</strong></div>
-        <div class="chip">🌇 Sunset: <strong id="sunsetLabel">—</strong></div>
-        <div class="chip">⬆️ High: <strong id="tideHigh">—</strong></div>
-        <div class="chip">⬇️ Low: <strong id="tideLow">—</strong></div>
-        <div class="chip score" id="scoreBadge">Surfability —</div>
-        <a class="chip link" href="https://www.metservice.com/marine/tides/wellington" target="_blank" rel="noopener">MetService Tides ↗</a>
-      </div>
-    </section>
+            // Add event listeners to buttons
+            refreshButton.addEventListener('click', refreshImage);
+            openImageButton.addEventListener('click', openImageInNewTab);
 
-    <!-- 24h Conditions Table -->
-    <section class="conditions">
-      <h2 class="panel-title">24‑Hour Forecast – Lyall Bay (metric)</h2>
-      <div class="table-scroll">
-        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-      <p id="tableHelp" class="panel-note">
-        Each column is an hour. Rows show wave height, wave period, wind speed, gusts, direction, rain, tide height, and surfability. 
-        Night hours are shaded. Auto‑refresh every 30 minutes.
-      </p>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <p>© <span id="year"></span> Maranui Surf Life Saving Club. Personal non‑official project.</p>
-  </footer>
+            // Optional: Auto-refresh the image every 2 minutes (120,000 ms)
+            setInterval(refreshImage, 120000);
+        });
+    </script>
 </body>
 </html>
