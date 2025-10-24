@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maranui Webcam v6.4.5 – Surf & Airport Cams</title>
+  <title>Maranui Webcam v6.4.6 — Surf & Airport Cams</title>
   <meta name="theme-color" content="#e63946" />
   <link rel="stylesheet" href="style.css?v=6.4.3" />
-  <script defer src="script.js?v=6.4.5"></script>
+  <script defer src="script.js?v=6.4.6"></script>
 </head>
 <body>
   <header class="site-header">
@@ -18,12 +18,11 @@
 
   <!-- Top info chips -->
   <div class="info-chips">
-    <div id="sunChip" class="chip sun"></div>
-    <div id="tideChip" class="chip tide"></div>
+    <div id="sunChip" class="chip sun">🌅 — 🌇 —</div>
+    <div id="tideChip" class="chip tide">🌊 Loading...</div>
   </div>
 
   <main class="content">
-    <!-- Camera -->
     <section class="camera-section">
       <div class="cam">
         <div class="overlay top"></div>
@@ -39,7 +38,6 @@
         <div class="overlay bottom"></div>
       </div>
 
-      <!-- Camera toggle -->
       <div class="switch-row">
         <button id="camToggle" class="toggle toggle--surf" type="button">
           <span class="toggle__left">🏖️ Surf Cam</span>
@@ -48,8 +46,6 @@
         </button>
       </div>
     </section>
-
-    <!-- Removed summary icons section -->
 
     <!-- 24-hour forecast table -->
     <section class="conditions">
@@ -61,30 +57,24 @@
         </table>
       </div>
       <div class="status-row">
-        <span id="dataStatus" class="status-chip">—</span>
+        <span id="dataStatus" class="status-chip">Initialising...</span>
         <span id="updatedAt" class="status-chip faint">—</span>
       </div>
-      <p class="panel-note">
-        Columns are hours (00–23). Rows show wave height, period, wind, gusts, direction, rain, tide height, and surfability.
-        Night hours are shaded. Auto-refresh every 30 minutes.
-      </p>
     </section>
   </main>
 
   <footer class="site-footer">
     <p>
-      Maranui Webcam <strong>v6.4.5</strong> © Maranui Surf Life Saving Club ·
+      Maranui Webcam <strong>v6.4.6</strong> © Maranui Surf Life Saving Club ·
       Data from Open-Meteo & MetService (30 min refresh)
     </p>
   </footer>
 
   <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.getRegistrations()
-        .then(rs => rs.forEach(r => r.unregister()))
-        .finally(() => navigator.serviceWorker.register('sw.js?v=6.4.3').catch(console.warn));
-    });
+    navigator.serviceWorker.getRegistrations()
+      .then(rs => rs.forEach(r => r.unregister()))
+      .finally(() => navigator.serviceWorker.register('sw.js?v=6.4.3').catch(console.warn));
   }
   </script>
 </body>
