@@ -27,7 +27,7 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 .cam iframe{width:100%; height:100%; border:0; display:block; transition:opacity .25s ease}
 
 /* Wing overlay bars — 28px, solid red, seamless repeat-x, slow left→right */
-.overlay{position:absolute; left:0; width:100%; height:28px; z-index:3;
+.overlay{position:absolute; left:0; width:100%; height:35px; z-index:3;
   background-color: var(--red);
   background-image:url('assets/maranui-wing-band.png');
   background-repeat: repeat-x;
