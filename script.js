@@ -171,34 +171,58 @@ function isNight(d,h){
  /* ---------- Sunrise / Sunset + Tide Extremes Display ---------- */
 
 function findTideExtremes(tideHeights, hours) {
+  if (!tideHeights || !hours || tideHeights.length < 3) {
+    return { nextHigh: new Date(), nextLow: new Date() };
+  }
+
   const highs = [], lows = [];
+  
+  // Find all high and low tides
   for (let i = 1; i < tideHeights.length - 1; i++) {
     const prev = tideHeights[i - 1], curr = tideHeights[i], next = tideHeights[i + 1];
-    if (curr > prev && curr > next) highs.push(hours[i]);
-    if (curr < prev && curr < next) lows.push(hours[i]);
+    if (curr > prev && curr > next) {
+      highs.push({ time: hours[i], height: curr });
+    }
+    if (curr < prev && curr < next) {
+      lows.push({ time: hours[i], height: curr });
+    }
   }
-  // Pick the next upcoming high/low relative to now
+
+  const now = new Date();
+  
+  // Find next high tide after current time
+  const nextHigh = highs.find(t => t.time > now) || highs[0];
+  const nextLow = lows.find(t => t.time > now) || lows[0];
+
   return {
-    nextHigh: highs.find(t => t > new Date()) || highs[0],
-    nextLow:  lows.find(t => t > new Date())  || lows[0]
+    nextHigh: nextHigh ? nextHigh.time : new Date(now.getTime() + 6 * 3600000), // fallback +6h
+    nextLow: nextLow ? nextLow.time : new Date(now.getTime() + 12 * 3600000)   // fallback +12h
   };
 }
 
 function updateChips(d) {
   /* 🌅🌇 Sunrise / Sunset */
-  const s = new Date(d.sunrise), e = new Date(d.sunset);
+  const sunrise = new Date(d.sunrise);
+  const sunset = new Date(d.sunset);
+  
   const sunChip = document.getElementById("sunChip");
-  sunChip.innerHTML = `🌅 ${s.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}  ` +
-                      `🌇 ${e.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+  if (sunChip) {
+    sunChip.innerHTML = `🌅 ${sunrise.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}  ` +
+                        `🌇 ${sunset.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+  }
 
   /* 🌊 Tide High / Low */
-  if (d.tide && d.labelHours) {
+  const tideChip = document.getElementById("tideChip");
+  if (tideChip && d.tide && d.labelHours && d.tide.length > 0) {
     const tides = findTideExtremes(d.tide, d.labelHours);
-    const tideChip = document.getElementById("tideChip");
-    tideChip.innerHTML = `🌊 ${tides.nextHigh.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} ↑ / ` +
-                         `${tides.nextLow.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} ↓`;
+    tideChip.innerHTML = `🌊 High: ${tides.nextHigh.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} | ` +
+                         `Low: ${tides.nextLow.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+  } else if (tideChip) {
+    tideChip.innerHTML = `🌊 Tide data loading...`;
   }
 }
+
+
 /* ---------- Scoring ---------- */
 function score(wave,wind,rain,dir){
   if(wave==null) return 0;
