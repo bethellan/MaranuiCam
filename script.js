@@ -36,7 +36,8 @@ function buildTable(e){const t=document.getElementById("thead"),n=document.getEl
 function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new Date(e.sunrise)||n>=new Date(e.sunset)}
 
 /* ---------- NIWA Tide Predictions (authenticated + debug) ---------- */
-async function fetchTidePredictionsNIWA(){try{const url="https://api.niwa.co.nz/tides/data?station=Wellington&format=json";const resp=await fetch(url,{headers:{"x-apikey":NIWA_KEY}});if(!resp.ok)throw new Error("NIWA request failed: "+resp.status);const data=await resp.json();console.log("NIWA Tide Data:");if(data.predictions){data.predictions.forEach(p=>console.log(`${p.type} ${p.time} (${p.height} m)`));}return{highs:data.predictions?.filter(p=>p.type==="HIGH")||[],lows:data.predictions?.filter(p=>p.type==="LOW")||[],offline:!1}}catch(err){console.warn("NIWA tide fetch failed, falling back:",err);return{highs:[],lows:[],offline:!0}}}
+async function fetchTidePredictionsNIWA(){try{const url = "https://api.niwa.co.nz/tides/data?station=wellington";
+const resp=await fetch(url,{headers:{"x-apikey":NIWA_KEY}});if(!resp.ok)throw new Error("NIWA request failed: "+resp.status);const data=await resp.json();console.log("NIWA Tide Data:");if(data.predictions){data.predictions.forEach(p=>console.log(`${p.type} ${p.time} (${p.height} m)`));}return{highs:data.predictions?.filter(p=>p.type==="HIGH")||[],lows:data.predictions?.filter(p=>p.type==="LOW")||[],offline:!1}}catch(err){console.warn("NIWA tide fetch failed, falling back:",err);return{highs:[],lows:[],offline:!0}}}
 
 /* ---------- Update Chips ---------- */
 function updateChips(d){const fmt=t=>new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"});
