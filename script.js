@@ -437,8 +437,11 @@ next.addEventListener("click", () => {
     updateNavState();
   }
 
-  /* ---------- About Panel Controls ---------- */
-window.addEventListener("DOMContentLoaded", () => {
+  // keep this closing brace to end the first DOMContentLoaded
+});
+  
+/* ---------- About Panel Controls ---------- */
+window.addEventListener("load", () => {
   const aboutBtn = document.getElementById("aboutBtn");
   const aboutPanel = document.getElementById("aboutPanel");
   const closeAbout = document.getElementById("closeAbout");
@@ -463,6 +466,5 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-});
 
 
