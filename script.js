@@ -88,7 +88,8 @@ window.addEventListener("load", () => {
 
 /* ---------- Day handling ---------- */
 let dayOffset = 0; // 0 = today, -1 = yesterday, +1 = tomorrow
-
+const MAX_PAST_DAYS = 7;    // how far back you can go
+const MAX_FUTURE_DAYS = 7;  // how far forward you can go
 function getBaseDate(offsetDays = 0) {
   // Align to NZ midnight (Pacific/Auckland)
   const base = new Date();
@@ -370,24 +371,47 @@ async function refresh(){
 }
 
 
-/* ---------- About panel toggle ---------- */
+/* ---------- Day navigation buttons with limits + loading ---------- */
 window.addEventListener("DOMContentLoaded", () => {
-  const aboutBtn = document.getElementById("aboutBtn");
-  const aboutPanel = document.getElementById("aboutPanel");
-  const closeAbout = document.getElementById("closeAbout");
+  const prev = document.getElementById("prevDay");
+  const next = document.getElementById("nextDay");
+  const status = document.getElementById("dataStatus");
 
-  if (aboutBtn && aboutPanel) {
-    aboutBtn.addEventListener("click", () => {
-      aboutPanel.classList.add("active");
+  function updateNavState() {
+    prev.disabled = (dayOffset <= -MAX_PAST_DAYS);
+    next.disabled = (dayOffset >=  MAX_FUTURE_DAYS);
+  }
+
+  async function loadDay() {
+    status.textContent = "⏳ Loading…";
+    prev.disabled = next.disabled = true;
+    updateDayTitle();
+    const d = await fetchData(dayOffset);
+    buildTable(d);
+    updateChips(d);
+    status.textContent = d.offline ? "📁 Offline" : "🌐 Live";
+    updateNavState();
+  }
+
+  if (prev && next) {
+    prev.addEventListener("click", async () => {
+      if (dayOffset > -MAX_PAST_DAYS) {
+        dayOffset -= 1;
+        await loadDay();
+      }
     });
-    closeAbout.addEventListener("click", () => {
-      aboutPanel.classList.remove("active");
+
+    next.addEventListener("click", async () => {
+      if (dayOffset < MAX_FUTURE_DAYS) {
+        dayOffset += 1;
+        await loadDay();
+      }
     });
-    aboutPanel.addEventListener("click", (e) => {
-      if (e.target === aboutPanel) aboutPanel.classList.remove("active");
-    });
+
+    updateNavState();
   }
 });
+
 
 /* ---------- Day navigation buttons ---------- */
 window.addEventListener("DOMContentLoaded", () => {
