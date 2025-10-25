@@ -91,17 +91,6 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 .chip.faint{opacity:.85}
 .good{background:var(--good)!important} .poor{background:var(--poor)!important}
 
-.info-chips {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin: 12px auto;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 1200px;
-  padding: 0 12px;
-}
-
 .chip.sun, .chip.tide {
   background: #fff;
   border: 1px solid #e0e0e0;
