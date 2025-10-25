@@ -219,48 +219,67 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
 }
 .about-close:hover { background: var(--red-dark); }
 
-/* === Day navigation bar === */
+/* === Day navigation bar (refined layout) === */
 .day-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 10px 0 12px;
-  flex-wrap: nowrap;
-  max-width: 100%;
-}
-
-.day-nav h2 {
-  flex: 1;
-  text-align: center;
-  margin: 0;
+  justify-content: center;
+  gap: 20px;
+  margin: 14px 0 10px;
+  flex-wrap: wrap;
 }
 
 .nav-btn {
   background: var(--blue-dark);
   color: #fff;
   border: none;
-  border-radius: 20px;
-  padding: 6px 10px;
+  border-radius: 999px;
+  padding: 8px 16px;
   font-size: 14px;
   font-weight: 700;
-  min-width: 120px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  min-width: 130px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: background 0.2s ease, transform 0.08s ease;
 }
 
-.nav-btn:hover { background: var(--blue); }
+.nav-btn:hover {
+  background: var(--blue);
+  transform: translateY(-1px);
+}
 
+.nav-btn:active {
+  transform: scale(0.97);
+}
+
+.day-nav h2 {
+  font-size: 18px;
+  color: var(--blue-dark);
+  font-weight: 800;
+  margin: 0;
+  text-align: center;
+  flex: 1 1 auto;
+}
+
+/* Mobile layout */
 @media (max-width: 640px) {
   .day-nav {
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    margin: 10px 0;
   }
   .day-nav h2 {
+    font-size: 16px;
     text-align: center;
   }
+  .nav-btn {
+    min-width: 160px;
+    font-size: 13px;
+    padding: 6px 14px;
+  }
 }
+
 
 
 @media (max-width:640px){ .header-logo{height:24px} }
