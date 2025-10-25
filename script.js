@@ -82,8 +82,42 @@ window.addEventListener("load", () => {
   document.getElementById("dateLabel").textContent =
     new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
   refresh();
+  updateDayTitle();
   setInterval(refresh, 30*60*1000);
 });
+
+/* ---------- Day handling ---------- */
+let dayOffset = 0; // 0 = today, -1 = yesterday, +1 = tomorrow
+
+function getBaseDate(offsetDays = 0) {
+  // Align to NZ midnight (Pacific/Auckland)
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  base.setDate(base.getDate() + offsetDays);
+  return base;
+}
+
+function updateDayTitle() {
+  const title = document.getElementById("dayTitle");
+  if (!title) return;
+
+  const base = getBaseDate(dayOffset);
+  const label = base.toLocaleDateString("en-NZ", {
+    weekday: "short",
+    day: "numeric",
+    month: "short"
+  });
+
+  // Adjust wording for today / yesterday / tomorrow
+  let prefix = "";
+  if (dayOffset === 0) prefix = "(Today)";
+  else if (dayOffset === -1) prefix = "(Yesterday)";
+  else if (dayOffset === 1) prefix = "(Tomorrow)";
+  else prefix = `(${dayOffset > 0 ? "+" : ""}${dayOffset} days)`;
+
+  title.textContent = `24-Hour Forecast — Lyall Bay ${prefix} ${label}`;
+}
+
 
 /* ---------- Helpers ---------- */
 function toHourISO(d) { return new Date(d).toISOString().slice(0, 13) + ":00"; }
@@ -302,7 +336,9 @@ function score(wave, wind, rain, dir, wavePeriod, waveDirection) {
 
 /* ---------- Refresh cycle ---------- */
 async function refresh(){
-  const fallback=offlineData();
+  const base = getBaseDate(dayOffset);
+  const fallback = offlineData(base);
+  updateDayTitle();
   buildTable(fallback);
   const sunTimes=await fetchSunTimes(LAT,LON);
   fallback.sunrise=sunTimes.sunrise;
