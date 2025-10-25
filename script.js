@@ -378,3 +378,33 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+/* ---------- Day navigation buttons ---------- */
+window.addEventListener("DOMContentLoaded", () => {
+  const prev = document.getElementById("prevDay");
+  const next = document.getElementById("nextDay");
+
+  if (prev && next) {
+    prev.addEventListener("click", async () => {
+      dayOffset -= 1;
+      document.getElementById("dataStatus").textContent = "⏳ Loading…";
+      updateDayTitle();
+      const d = await fetchData(dayOffset);
+      buildTable(d);
+      updateChips(d);
+      document.getElementById("dataStatus").textContent =
+        d.offline ? "📁 Offline" : "🌐 Live";
+    });
+
+    next.addEventListener("click", async () => {
+      dayOffset += 1;
+      document.getElementById("dataStatus").textContent = "⏳ Loading…";
+      updateDayTitle();
+      const d = await fetchData(dayOffset);
+      buildTable(d);
+      updateChips(d);
+      document.getElementById("dataStatus").textContent =
+        d.offline ? "📁 Offline" : "🌐 Live";
+    });
+  }
+});
