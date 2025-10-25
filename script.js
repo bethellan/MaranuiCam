@@ -340,39 +340,40 @@ function updateChips(d) {
 }
 
 /* ---------- Scoring ---------- */
-/* ---------- Scoring ---------- */
 function score(wave, wind, rain, dir, wavePeriod, waveDirection) {
-  if(wave == null) return 0;
-  
-  let s;
-  if (wave < 0.5) s = 3;
-  else if (wave <= 1.5) s = 5 + (wave-0.5);
-  else if (wave <= 2.5) s = 7 + (wave-1.5);  
-  else s = 9;
+  if (wave == null) return 0;
 
-  // Wave cleanliness factor (using wave period)
-  let cleanliness = 1.0;
-  if (wavePeriod > 10) cleanliness += 0.5;    // Long period = cleaner waves
-  else if (wavePeriod > 7) cleanliness += 0.2; // Medium period = decent
-  else if (wavePeriod < 5) cleanliness -= 0.3; // Short period = choppy
-  
-  // Wind-wave alignment (offshore bonus) - ONLY if both directions exist
+  // --- 1. Base size weighting (non-linear) ---
+  // 0m=0, 0.5m=2, 1.0m=4, 1.5m=6, 2.0m=8, 3m=9, 4m+=10 (then capped)
+  let s = Math.min(10, (Math.pow(wave / 0.6, 1.2) * 2));
+  if (wave > 3) s -= (wave - 3) * 1.5; // too big penalty
+
+  // --- 2. Cleanliness from period ---
+  if (wavePeriod > 11) s += 1.0;
+  else if (wavePeriod >= 8) s += 0.5;
+  else if (wavePeriod <= 5) s -= 1.0;
+
+  // --- 3. Wind alignment (offshore boost / onshore penalty) ---
   if (dir != null && waveDirection != null) {
     const diff = Math.abs(dir - waveDirection);
-    const offshoreAngle = Math.min(diff, 360 - diff);
-    if (offshoreAngle < 45) cleanliness += 0.3; // Offshore winds
-    else if (offshoreAngle > 135) cleanliness -= 0.3; // Onshore winds
+    const angle = Math.min(diff, 360 - diff);
+    if (angle > 150) s += 1.0;        // offshore
+    else if (angle < 60) s -= 1.0;    // onshore
+    else if (angle >= 60 && angle <= 120) s -= 0.5; // cross-shore
   }
-  
-  s *= cleanliness; // Apply cleanliness multiplier
-  
-  // Traditional penalties
-  s -= wind > 20 ? (wind-20)/5 : 0;
-  if(rain > 0.5) s -= 2;
-  if(dir && (dir < 200 || dir > 340)) s += 1;
-  
+
+  // --- 4. Wind speed penalty ---
+  if (wind > 15) s -= (wind - 15) / 5; // penalise breezy days
+  if (wind > 25) s -= (wind - 25) / 2; // stronger penalty above 25 km/h
+
+  // --- 5. Rain penalty ---
+  if (rain > 0.5) s -= 1.5;
+  if (rain > 2) s -= 2.5;
+
+  // --- Clamp & return ---
   return Math.max(0, Math.min(10, s));
 }
+
 
 /* ---------- Refresh cycle ---------- */
 async function refresh(){
