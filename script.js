@@ -259,7 +259,12 @@ function updateChips(d) {
 /* ---------- Scoring ---------- */
 function score(wave,wind,rain,dir){
   if(wave==null) return 0;
-  let s=10 - Math.abs(wave-1)*5;
+  let s;
+  if (wave < 0.5) s = 3;                    // Too small
+  else if (wave <= 1.5) s = 5 + (wave-0.5); // Good range: 0.5-1.5m (5-7.5)
+  else if (wave <= 2.5) s = 7 + (wave-1.5); // Great range: 1.5-2.5m (7-9.5)  
+  else s = 9;                               // Maximum score for big waves (2.5m+)
+  
   s -= wind>20? (wind-20)/5 : 0;
   if(rain>0.5) s-=2;
   if(dir && (dir<200||dir>340)) s+=1;
