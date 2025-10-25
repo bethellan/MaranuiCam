@@ -237,16 +237,6 @@ function isNight(d, h) {
 }
 
 
-/* ---------- Find all high/low tides ---------- */
-function findTideExtremes(tideHeights, hours) {
-  const highs=[], lows=[];
-  for (let i=1;i<tideHeights.length-1;i++){
-    const prev=tideHeights[i-1], curr=tideHeights[i], next=tideHeights[i+1];
-    if (curr>prev && curr>next) highs.push({time:hours[i],height:curr});
-    if (curr<prev && curr<next) lows.push({time:hours[i],height:curr});
-  }
-  return { highs, lows };
-}
 
 /* ---------- Update chips ---------- */
 
