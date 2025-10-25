@@ -219,10 +219,23 @@ function buildTable(d) {
   badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
 }
 
-function isNight(d,h){
-  const hh = (h instanceof Date)? h : d.labelHours[h];
-  return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
+function isNight(d, h) {
+  const hh = (h instanceof Date) ? h : d.labelHours[h];
+
+  // Get today's sunrise and sunset
+  const sunrise = new Date(d.sunrise);
+  const sunset = new Date(d.sunset);
+
+  // If the hour belongs to the next day, shift sunrise/sunset forward by 24h
+  if (hh.getDate() !== sunrise.getDate()) {
+    sunrise.setDate(sunrise.getDate() + 1);
+    sunset.setDate(sunset.getDate() + 1);
+  }
+
+  // Night is before sunrise or after sunset for that day
+  return hh < sunrise || hh >= sunset;
 }
+
 
 /* ---------- Find all high/low tides ---------- */
 function findTideExtremes(tideHeights, hours) {
