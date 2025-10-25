@@ -29,7 +29,55 @@ function offlineData(){const e=new Date;e.setMinutes(0,0,0);const t=Array.from({
 async function fetchSunTimes(e,t){try{const n=await fetch(`https://api.sunrise-sunset.org/json?lat=${e}&lng=${t}&formatted=0`),a=await n.json();if(a.status==="OK")return{sunrise:new Date(a.results.sunrise),sunset:new Date(a.results.sunset)}}catch(e){console.warn("Sunrise-Sunset fetch failed:",e)}return{sunrise:new Date().setHours(7,0,0,0),sunset:new Date().setHours(19,0,0,0)}}
 
 /* ---------- Fetch Open-Meteo ---------- */
-async function fetchData(){const e=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`,t=`https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction,tide_height&timezone=auto`;try{const[a,r]=await Promise.allSettled([fetch(e),fetch(t)]),o=a.value&&a.value.ok?await a.value.json():{},s=r.value&&r.value.ok?await r.value.json():{},c=new Date;c.setMinutes(0,0,0);const d=Array.from({length:24},(e,t)=>new Date(c.getTime()+36e5*t)),u=e=>e?Object.fromEntries(e.time.map((e,t)=>[e,t])):{},m=u(o.hourly||{}),h=u(s.hourly||{}),p={labelHours:d,wind:[],gusts:[],windDir:[],rain:[],wave:[],waveP:[],waveD:[],tide:[],sunrise:o.daily?.sunrise?new Date(o.daily.sunrise[0]):new Date().setHours(7,0),sunset:o.daily?.sunset?new Date(o.daily.sunset[0]):new Date().setHours(19,0),offline:!1};return d.forEach(e=>{const t=toHourISO(e),n=m[t],a=h[t];p.wind.push(n!=null?o.hourly.wind_speed_10m[n]:null),p.gusts.push(n!=null?o.hourly.wind_gusts_10m[n]:null),p.windDir.push(n!=null?o.hourly.wind_direction_10m[n]:null),p.rain.push(n!=null?o.hourly.precipitation[n]:null),p.wave.push(a!=null?s.hourly.wave_height[a]:null),p.waveP.push(a!=null?s.hourly.wave_period[a]:null),p.waveD.push(a!=null?s.hourly.wave_direction[a]:null),p.tide.push(a!=null?s.hourly.tide_height[a]:null)}),p}catch(e){return console.warn("Falling back:",e),offlineData()}}
+async function fetchData() {
+  const e = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=Pacific/Auckland&windspeed_unit=kmh`;
+  const t = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=Pacific/Auckland`;
+  
+  try {
+    const [a, r] = await Promise.allSettled([fetch(e), fetch(t)]);
+    const o = a.value && a.value.ok ? await a.value.json() : {};
+    const s = r.value && r.value.ok ? await r.value.json() : {};
+
+    const c = new Date();
+    c.setMinutes(0, 0, 0);
+    const d = Array.from({ length: 24 }, (_, i) => new Date(c.getTime() + 36e5 * i));
+    const u = e => e ? Object.fromEntries(e.time.map((t, i) => [t, i])) : {};
+    const m = u(o.hourly || {});
+    const h = u(s.hourly || {});
+
+    const p = {
+      labelHours: d,
+      wind: [],
+      gusts: [],
+      windDir: [],
+      rain: [],
+      wave: [],
+      waveP: [],
+      waveD: [],
+      tide: [],
+      sunrise: o.daily?.sunrise ? new Date(o.daily.sunrise[0]) : new Date().setHours(7, 0),
+      sunset:  o.daily?.sunset  ? new Date(o.daily.sunset[0])  : new Date().setHours(19, 0),
+      offline: false
+    };
+
+    d.forEach(e => {
+      const t = e.toISOString().slice(0, 13) + ":00";
+      const n = m[t], a = h[t];
+      p.wind.push(n != null ? o.hourly.wind_speed_10m[n] : null);
+      p.gusts.push(n != null ? o.hourly.wind_gusts_10m[n] : null);
+      p.windDir.push(n != null ? o.hourly.wind_direction_10m[n] : null);
+      p.rain.push(n != null ? o.hourly.precipitation[n] : null);
+      p.wave.push(a != null ? s.hourly.wave_height[a] : null);
+      p.waveP.push(a != null ? s.hourly.wave_period[a] : null);
+      p.waveD.push(a != null ? s.hourly.wave_direction[a] : null);
+    });
+
+    return p;
+  } catch (err) {
+    console.warn("Falling back:", err);
+    return offlineData();
+  }
+}
 
 /* ---------- Table Builder ---------- */
 function buildTable(e){const t=document.getElementById("thead"),n=document.getElementById("tbody");t.innerHTML=n.innerHTML="";const a=document.createElement("tr");a.innerHTML="<th>Metric</th>"+e.labelHours.map(t=>`<th${isNight(e,t)?' class="night"':''}>${t.toLocaleTimeString([],{hour:"2-digit"})}</th>`).join(""),t.appendChild(a);const r=[["Wave (m)",e.wave,t=>t?.toFixed(1)??"—"],["Period (s)",e.waveP,t=>t?.toFixed(0)??"—"],["Wind (km/h)",e.wind,t=>t?.toFixed(0)??"—"],["Gusts (km/h)",e.gusts,t=>t?.toFixed(0)??"—"],["Direction",e.windDir,t=>t!=null?`${degToCompass(t)} <span style='transform:rotate(${t}deg)' class='dir-arrow'>➤</span>`:"—"],["Rain (mm/hr)",e.rain,t=>t?.toFixed(1)??"—"],["Tide (m)",e.tide,t=>t?.toFixed(2)??"—"]];r.forEach(([t,a,r])=>{const i=document.createElement("tr");i.innerHTML="<th>"+t+"</th>"+a.map((t,n)=>`<td${isNight(e,n)?' class="night"':''}>${r(t)}</td>`).join(""),n.appendChild(i)});const i=e.labelHours.map((t,n)=>score(e.wave[n],e.wind[n],e.rain[n],e.windDir[n],e.waveP[n],e.tide[n])),o=document.createElement("tr");o.innerHTML="<th>Surfability (1–10)</th>"+i.map((t,n)=>{const a=t>=8?"good":t>=5?"fair":"poor";return`<td class="scale-surf ${a}${isNight(e,n)?' night':''}">${t.toFixed(1)}</td>`}).join(""),n.appendChild(o);const s=i[0],l=document.getElementById("scoreBadge");l.textContent=`Surfability ${s.toFixed(1)}`;l.className="chip score "+(s>=8?"good":s>=5?"fair":"poor")}
