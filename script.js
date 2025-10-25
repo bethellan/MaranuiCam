@@ -1,4 +1,4 @@
-// ===== v6.4.5 MaranuiCam — precise sunrise/sunset + local 4-tide display =====
+// ===== v6.4.7 MaranuiCam — Wellington-local NIWA tide predictions =====
 const LAT = -41.327, LON = 174.794;
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
@@ -28,152 +28,18 @@ function offlineData(){const e=new Date;e.setMinutes(0,0,0);const t=Array.from({
 async function fetchSunTimes(e,t){try{const n=await fetch(`https://api.sunrise-sunset.org/json?lat=${e}&lng=${t}&formatted=0`),a=await n.json();if(a.status==="OK")return{sunrise:new Date(a.results.sunrise),sunset:new Date(a.results.sunset)}}catch(e){console.warn("Sunrise-Sunset fetch failed:",e)}return{sunrise:new Date().setHours(7,0,0,0),sunset:new Date().setHours(19,0,0,0)}}
 
 /* ---------- Fetch Open-Meteo ---------- */
-async function fetchData(){const e=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`,t=`https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`,n=`https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;try{const[a,r,i]=await Promise.allSettled([fetch(e),fetch(t),fetch(n)]),o=a.value&&a.value.ok?await a.value.json():{},s=r.value&&r.value.ok?await r.value.json():{},l=i.value&&i.value.ok?await i.value.json():{},c=new Date;c.setMinutes(0,0,0);const d=Array.from({length:24},(e,t)=>new Date(c.getTime()+36e5*t)),u=e=>e?Object.fromEntries(e.time.map((e,t)=>[e,t])):{},m=u(o.hourly||{}),h=u(s.hourly||{}),f=u(l.hourly||{}),p={labelHours:d,wind:[],gusts:[],windDir:[],rain:[],wave:[],waveP:[],waveD:[],tide:[],sunrise:o.daily?.sunrise?new Date(o.daily.sunrise[0]):new Date().setHours(7,0),sunset:o.daily?.sunset?new Date(o.daily.sunset[0]):new Date().setHours(19,0),offline:!1};return d.forEach(e=>{const t=toHourISO(e),n=m[t],a=h[t],r=f[t];p.wind.push(n!=null?o.hourly.wind_speed_10m[n]:null),p.gusts.push(n!=null?o.hourly.wind_gusts_10m[n]:null),p.windDir.push(n!=null?o.hourly.wind_direction_10m[n]:null),p.rain.push(n!=null?o.hourly.precipitation[n]:null),p.wave.push(a!=null?s.hourly.wave_height[a]:null),p.waveP.push(a!=null?s.hourly.wave_period[a]:null),p.waveD.push(a!=null?s.hourly.wave_direction[a]:null),p.tide.push(r!=null?l.hourly.tide_height[r]:null)}),p}catch(e){return console.warn("Falling back:",e),offlineData()}}
+async function fetchData(){const e=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`,t=`https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`;try{const[a,r]=await Promise.allSettled([fetch(e),fetch(t)]),o=a.value&&a.value.ok?await a.value.json():{},s=r.value&&r.value.ok?await r.value.json():{},c=new Date;c.setMinutes(0,0,0);const d=Array.from({length:24},(e,t)=>new Date(c.getTime()+36e5*t)),u=e=>e?Object.fromEntries(e.time.map((e,t)=>[e,t])):{},m=u(o.hourly||{}),h=u(s.hourly||{}),p={labelHours:d,wind:[],gusts:[],windDir:[],rain:[],wave:[],waveP:[],waveD:[],sunrise:o.daily?.sunrise?new Date(o.daily.sunrise[0]):new Date().setHours(7,0),sunset:o.daily?.sunset?new Date(o.daily.sunset[0]):new Date().setHours(19,0),offline:!1};return d.forEach(e=>{const t=toHourISO(e),n=m[t],a=h[t];p.wind.push(n!=null?o.hourly.wind_speed_10m[n]:null),p.gusts.push(n!=null?o.hourly.wind_gusts_10m[n]:null),p.windDir.push(n!=null?o.hourly.wind_direction_10m[n]:null),p.rain.push(n!=null?o.hourly.precipitation[n]:null),p.wave.push(a!=null?s.hourly.wave_height[a]:null),p.waveP.push(a!=null?s.hourly.wave_period[a]:null),p.waveD.push(a!=null?s.hourly.wave_direction[a]:null)}),p}catch(e){return console.warn("Falling back:",e),offlineData()}}
 
-/* ---------- Table ---------- */
-function buildTable(e){const t=document.getElementById("thead"),n=document.getElementById("tbody");t.innerHTML=n.innerHTML="";const a=document.createElement("tr");a.innerHTML="<th>Metric</th>"+e.labelHours.map(t=>`<th${isNight(e,t)?' class="night"':''}>${t.toLocaleTimeString([],{hour:"2-digit"})}</th>`).join(""),t.appendChild(a);const r=[["Wave (m)",e.wave,t=>t?.toFixed(1)??"—"],["Period (s)",e.waveP,t=>t?.toFixed(0)??"—"],["Wind (km/h)",e.wind,t=>t?.toFixed(0)??"—"],["Gusts (km/h)",e.gusts,t=>t?.toFixed(0)??"—"],["Direction",e.windDir,t=>t!=null?`${degToCompass(t)} <span style='transform:rotate(${t}deg)' class='dir-arrow'>➤</span>`:"—"],["Rain (mm/hr)",e.rain,t=>t?.toFixed(1)??"—"],["Tide (m)",e.tide,t=>t?.toFixed(2)??"—"]];r.forEach(([t,a,r])=>{const i=document.createElement("tr");i.innerHTML="<th>"+t+"</th>"+a.map((t,n)=>`<td${isNight(e,n)?' class="night"':''}>${r(t)}</td>`).join(""),n.appendChild(i)});const i=e.labelHours.map((t,n)=>score(e.wave[n],e.wind[n],e.rain[n],e.windDir[n])),o=document.createElement("tr");o.innerHTML="<th>Surfability (1–10)</th>"+i.map((t,n)=>{const a=t>=8?"good":t>=5?"fair":"poor";return`<td class="scale-surf ${a}${isNight(e,n)?' night':''}">${t.toFixed(1)}</td>`}).join(""),n.appendChild(o);const s=i[0],l=document.getElementById("scoreBadge");l.textContent=`Surfability ${s.toFixed(1)}`,l.className="chip score "+(s>=8?"good":s>=5?"":"poor")}
-function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new Date(e.sunrise)||n>=new Date(e.sunset)}
+/* ---------- Fetch NIWA Tide Predictions (Wellington local) ---------- */
+async function fetchTidePredictionsNIWA(){try{const url="https://api.niwa.co.nz/tides/data?station=Wellington&format=json";const resp=await fetch(url);if(!resp.ok)throw new Error("NIWA request failed");const data=await resp.json();return{highs:data.highs||[],lows:data.lows||[],offline:!1}}catch(err){console.warn("NIWA tide fetch failed, falling back:",err);return{highs:[],lows:[],offline:!0}}}
 
-/* ---------- Tides ---------- */
-/* ---------- Find all high/low tides (local-safe) ---------- */
-// Find highs/lows from hourly heights with alternation and de-dupe (mergeWindow minutes)
-function findTideExtremes(tideHeights, hours, mergeWindowMin = 120) {
-  const events = [];
-
-  // 1) Raw local maxima/minima by sign change of slope
-  for (let i = 1; i < tideHeights.length - 1; i++) {
-    const p = tideHeights[i - 1], c = tideHeights[i], n = tideHeights[i + 1];
-    if (p == null || c == null || n == null) continue;
-    const up = c - p, down = n - c;
-    if (up > 0 && down < 0) {
-      events.push({ type: "HIGH", time: hours[i], height: c });
-    } else if (up < 0 && down > 0) {
-      events.push({ type: "LOW", time: hours[i], height: c });
-    }
-  }
-
-  // 2) Sort by time (as Dates, no UTC forcing)
-  events.forEach(e => e.local = new Date(typeof e.time === "string" ? e.time : e.time.toISOString()));
-  events.sort((a, b) => a.local - b.local);
-
-  // 3) Merge near-duplicates of the same type within mergeWindow (keep the more “extreme”)
-  const merged = [];
-  const winMs = mergeWindowMin * 60 * 1000;
-  for (const e of events) {
-    const last = merged[merged.length - 1];
-    if (last && last.type === e.type && (e.local - last.local) <= winMs) {
-      // keep the more extreme (higher HIGH, lower LOW)
-      const keepE = e.type === "HIGH"
-        ? (e.height >= last.height ? e : last)
-        : (e.height <= last.height ? e : last);
-      merged[merged.length - 1] = keepE;
-    } else {
-      merged.push(e);
-    }
-  }
-
-  // 4) Enforce alternation HIGH ↔ LOW (drop same-type repeats)
-  const alternating = [];
-  for (const e of merged) {
-    const prev = alternating[alternating.length - 1];
-    if (!prev || prev.type !== e.type) alternating.push(e);
-    else {
-      // same type back-to-back: keep the more “extreme”
-      const keepE = e.type === "HIGH"
-        ? (e.height >= prev.height ? e : prev)
-        : (e.height <= prev.height ? e : prev);
-      alternating[alternating.length - 1] = keepE;
-    }
-  }
-
-  // Return separated arrays for convenience
-  return {
-    highs: alternating.filter(e => e.type === "HIGH"),
-    lows:  alternating.filter(e => e.type === "LOW")
-  };
-}
-
-
-/* ---------- Update chips (local 4-tide robust) ---------- */
-/* ---------- Update chips (local 4-tide robust) ---------- */
-function updateChips(d) {
-  const fmt = t =>
-    new Date(t).toLocaleTimeString("en-NZ", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "Pacific/Auckland"
-    });
-
-  // 🌅 Sunrise / Sunset
-  const sunChip = document.getElementById("sunChip");
-  if (sunChip && d.sunrise && d.sunset) {
-    sunChip.innerHTML = `🌅 ${fmt(d.sunrise)}  🌇 ${fmt(d.sunset)}`;
-  }
-
-  // 🌊 Tide highs/lows
-  const tideChip = document.getElementById("tideChip");
-  if (tideChip && d.tide?.length) {
-    const tides = findTideExtremes(d.tide, d.labelHours);
-
-    // Combine and create unified event list
-    const events = [
-      ...tides.highs.map(t => ({ type: "HIGH", time: t.time, height: t.height })),
-      ...tides.lows.map(t => ({ type: "LOW", time: t.time, height: t.height }))
-    ].map(ev => {
-      const raw = typeof ev.time === "string" ? ev.time : ev.time.toISOString();
-      const local = new Date(raw); // already local when timezone=auto
-      return { ...ev, local };
-    });
-
-    // Sort chronologically
-    events.sort((a, b) => a.local - b.local);
-
-    // Keep only today's events (NZ local)
-    const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
-    const todays = events.filter(ev =>
-      ev.local.toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" }) === todayLocal
-    );
-
-    // Up to two highs and two lows
-    const highs = todays.filter(e => e.type === "HIGH").slice(0, 2);
-    const lows  = todays.filter(e => e.type === "LOW").slice(0, 2);
-
-    // If not enough for today, fill from next available
-    function ensureTwo(arr, wantType) {
-      if (arr.length >= 2) return arr;
-      const extras = events.filter(e => e.type === wantType && !arr.includes(e));
-      return arr.concat(extras).slice(0, 2);
-    }
-
-    const highsShow = ensureTwo(highs, "HIGH");
-    const lowsShow  = ensureTwo(lows,  "LOW");
-
-    // Render chip text
-    const highStr = highsShow.map(e => fmt(e.local)).join("  ");
-    const lowStr  = lowsShow.map(e => fmt(e.local)).join("  ");
-    tideChip.innerHTML = `🌊 HIGH: ${highStr || "—"}  LOW: ${lowStr || "—"}`;
-  } else if (tideChip) {
-    tideChip.innerHTML = "🌊 Tide data loading...";
-  }
-}
-
-
+/* ---------- Update chips (NIWA tide + sunrise/sunset) ---------- */
+function updateChips(d){const fmt=t=>new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"});
+const sunChip=document.getElementById("sunChip");if(sunChip&&d.sunrise&&d.sunset){sunChip.innerHTML=`🌅 ${fmt(d.sunrise)}  🌇 ${fmt(d.sunset)}`}
+const tideChip=document.getElementById("tideChip");if(tideChip){if(d.tideTimes&&d.tideTimes.highs?.length&&d.tideTimes.lows?.length){const highs=d.tideTimes.highs.map(e=>({t:new Date(e.time),h:e.height}));const lows=d.tideTimes.lows.map(e=>({t:new Date(e.time),h:e.height}));const highStr=highs.map(e=>`${fmt(e.t)} (${e.h.toFixed(2)} m)`).join("  ");const lowStr=lows.map(e=>`${fmt(e.t)} (${e.h.toFixed(2)} m)`).join("  ");tideChip.innerHTML=`🌊 HIGH: ${highStr}  LOW: ${lowStr}`}else{tideChip.innerHTML="🌊 Tide data unavailable"}}}
 
 /* ---------- Scoring ---------- */
 function score(e,t,n,a){if(e==null)return 0;let r=10-Math.abs(e-1)*5;return r-=t>20?(t-20)/5:0,n>.5&&(r-=2),a&&(a<200||a>340)&&(r+=1),Math.max(0,Math.min(10,r))}
 
 /* ---------- Refresh ---------- */
-async function refresh(){
-  const e=offlineData();
-  buildTable(e);
-  const t=await fetchSunTimes(LAT,LON);
-  e.sunrise=t.sunrise,e.sunset=t.sunset,updateChips(e);
-  document.getElementById("dataStatus").textContent="⏳ loading...";
-  try{
-    const n=await fetchData(),a=await fetchSunTimes(LAT,LON);
-    n.sunrise=a.sunrise,n.sunset=a.sunset,buildTable(n),updateChips(n),
-    document.getElementById("dataStatus").textContent=n.offline?"📁 Offline":"🌐 Live",
-    document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString()
-  }catch(e){console.error("Refresh failed:",e),document.getElementById("dataStatus").textContent="❌ Error"}
-}
+async function refresh(){document.getElementById("dataStatus").textContent="⏳ loading...";const offline=offlineData();buildTable(offline);const sun=await fetchSunTimes(LAT,LON);offline.sunrise=sun.sunrise;offline.sunset=sun.sunset;updateChips(offline);try{const[marine,sun2,niwa]=await Promise.all([fetchData(),fetchSunTimes(LAT,LON),fetchTidePredictionsNIWA()]);marine.sunrise=sun2.sunrise;marine.sunset=sun2.sunset;marine.tideTimes=niwa;buildTable(marine);updateChips(marine);document.getElementById("dataStatus").textContent=niwa.offline?"🌐 Live (no NIWA)":"🌐 Live";document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"})}catch(err){console.error("Refresh failed:",err);document.getElementById("dataStatus").textContent="❌ Error"}}
