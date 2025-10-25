@@ -1,13 +1,32 @@
 // ===== v6.4.4 MaranuiCam — precise sunrise/sunset + full 24h tides (no popup) =====
 const LAT = -41.327, LON = 174.794;
-const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
-const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
+// ===== Camera setup: Surf ⇄ Airport ⇄ Lookout =====
+const CAMS = [
+  {
+    id: "surf",
+    titleLeft: "🏖️ Surf Cam",
+    titleRight: "✈️ Airport Cam",
+    url: "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1"
+  },
+  {
+    id: "airport",
+    titleLeft: "✈️ Airport Cam",
+    titleRight: "🌊 Lookout Cam",
+    url: "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1"
+  },
+  {
+    id: "lookout",
+    titleLeft: "🌊 Lookout Cam",
+    titleRight: "🏖️ Surf Cam",
+    url: "https://www.youtube.com/embed/BfCQIhmK6OE?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1"
+  }
+];
 
+let currentCam = 0;
 const frame = document.getElementById("liveFrame");
 const camToggle = document.getElementById("camToggle");
-let showingSurf = true;
-let youtubeAPIReady = false;
-let player;
+let youtubeAPIReady = false, player;
+
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
@@ -56,33 +75,42 @@ function onPlayerStateChange(event) {
   }
 }
 
-// Camera toggle
-function setToggle() {
-  camToggle.classList.toggle("toggle--surf", showingSurf);
-  camToggle.classList.toggle("toggle--airport", !showingSurf);
+// ---------- Camera Toggle Cycle ----------
+function updateToggleButton() {
+  const nextIndex = (currentCam + 1) % CAMS.length;
+  const thisCam = CAMS[currentCam];
+  const nextCam = CAMS[nextIndex];
+  camToggle.innerHTML = `
+    <span class="toggle__left">${thisCam.titleLeft}</span>
+    <span class="toggle__divider">⇄</span>
+    <span class="toggle__right">${nextCam.titleRight}</span>`;
 }
 
-camToggle.addEventListener("click", () => {
-  showingSurf = !showingSurf;
-  setToggle();
+function switchCam() {
+  currentCam = (currentCam + 1) % CAMS.length;
+  const cam = CAMS[currentCam];
   frame.style.opacity = "0";
   setTimeout(() => {
-    frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
+    frame.src = cam.url;
     frame.style.opacity = "1";
     setTimeout(() => {
       if (window.YT && youtubeAPIReady) initPlayer();
       tryPlay();
     }, 400);
   }, 200);
-});
+  updateToggleButton();
+}
+
+camToggle.addEventListener("click", switchCam);
+
 
 window.addEventListener("load", () => {
-  setToggle();
   loadYouTubeAPI();
   document.getElementById("dateLabel").textContent =
     new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
   refresh();
   updateDayTitle();
+  updateToggleButton();
   setInterval(refresh, 30*60*1000);
 });
 
