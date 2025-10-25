@@ -111,7 +111,7 @@
 <!-- About Info Panel -->
 <button id="aboutBtn" class="about-btn">ℹ️ About Data</button>
 
-<div id="aboutPanel" class="about-panel">
+<<div id="aboutPanel" class="about-panel">
   <div class="about-content">
     <h3>About This Data</h3>
     <p>The hourly forecast table and Surfability score use live data for Lyall Bay, Wellington.</p>
@@ -128,7 +128,13 @@
 
     <h4>Surfability Calculation</h4>
     <pre>
-Base = 10 − |wave_height − 1.0| × 5
+Wave Height Scoring:
+&lt; 0.5m = 3 (too small)
+0.5–1.5m = 5–7.5 (good for beginners)
+1.5–2.5m = 7–9.5 (great for experienced)
+&gt; 2.5m = 9 (excellent big waves)
+
+Adjustments:
 −((wind − 20)/5) if wind &gt; 20 km/h
 −2 if rain &gt; 0.5 mm/hr
 +1 if wind dir 200–340° (offshore/cross)
@@ -136,6 +142,7 @@ clamped between 0 and 10
     </pre>
 
     <p><strong>8–10:</strong> Excellent · <strong>5–7.9:</strong> Fair · <strong>&lt;5:</strong> Poor</p>
+    <p><em>Note: This formula rewards bigger waves that experienced surfers and kids prefer!</em></p>
 
     <button id="closeAbout" class="about-close">Close</button>
   </div>
