@@ -436,6 +436,33 @@ next.addEventListener("click", () => {
 
     updateNavState();
   }
+
+  /* ---------- About Panel Controls ---------- */
+window.addEventListener("DOMContentLoaded", () => {
+  const aboutBtn = document.getElementById("aboutBtn");
+  const aboutPanel = document.getElementById("aboutPanel");
+  const closeAbout = document.getElementById("closeAbout");
+
+  if (aboutBtn && aboutPanel && closeAbout) {
+    // Open panel
+    aboutBtn.addEventListener("click", () => {
+      aboutPanel.classList.add("active");
+    });
+
+    // Close panel (button)
+    closeAbout.addEventListener("click", () => {
+      aboutPanel.classList.remove("active");
+    });
+
+    // Close when clicking outside content
+    aboutPanel.addEventListener("click", (e) => {
+      if (e.target === aboutPanel) {
+        aboutPanel.classList.remove("active");
+      }
+    });
+  }
+});
+
 });
 
 
