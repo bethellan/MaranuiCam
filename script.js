@@ -94,8 +94,9 @@ function updateChips(d) {
     const show = (filtered.length ? filtered : events).slice(0, 4);
 
     if (show.length) {
-      const text = show.map(ev => `${ev.type}: ${fmt(ev.local)}`).join(" | ");
-      tideChip.innerHTML = `🌊 ${text}`;
+      const highStr = show.filter(e => e.type === "HIGH").map(e => fmt(e.local)).join("  ");
+const lowStr  = show.filter(e => e.type === "LOW").map(e => fmt(e.local)).join("  ");
+tideChip.innerHTML = `🌊 HIGH: ${highStr || '—'}  LOW: ${lowStr || '—'}`;
     } else {
       tideChip.innerHTML = "🌊 Tide data unavailable";
     }
