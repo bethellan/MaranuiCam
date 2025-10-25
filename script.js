@@ -168,6 +168,7 @@ async function fetchSunTimes(lat, lon) {
 /* ---------- Fetch + align Open-Meteo data ---------- */
 /* ---------- Fetch + align Open-Meteo data ---------- */
 /* ---------- Fetch + align Open-Meteo data by dayOffset (Pacific/Auckland) ---------- */
+/* ---------- Fetch + align Open-Meteo data by dayOffset (Pacific/Auckland) ---------- */
 async function fetchData(offsetDays = 0) {
   const base = getBaseDate(offsetDays);              // local midnight (NZ)
   const start = base.toISOString().split("T")[0];
@@ -394,19 +395,16 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   if (prev && next) {
-    prev.addEventListener("click", async () => {
-      if (dayOffset > -MAX_PAST_DAYS) {
-        dayOffset -= 1;
-        await loadDay();
-      }
-    });
+   prev.addEventListener("click", () => {
+  dayOffset--;
+  loadDay();
+});
 
-    next.addEventListener("click", async () => {
-      if (dayOffset < MAX_FUTURE_DAYS) {
-        dayOffset += 1;
-        await loadDay();
-      }
-    });
+next.addEventListener("click", () => {
+  dayOffset++;
+  loadDay();
+});
+
 
     updateNavState();
   }
