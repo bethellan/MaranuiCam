@@ -236,14 +236,21 @@ function findTideExtremes(tideHeights, hours) {
 }
 
 /* ---------- Update chips ---------- */
+
+
+
+/* ---------- Update chips ---------- */
 function updateChips(d) {
-  const sunChip=document.getElementById("sunChip");
-  if (sunChip){
-    sunChip.innerHTML=`🌅 ${new Date(d.sunrise).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}  `+
-                      `🌇 ${new Date(d.sunset).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}`;
+  const sunChip = document.getElementById("sunChip");
+  if (sunChip) {
+    sunChip.innerHTML =
+      `🌅 ${new Date(d.sunrise).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}  ` +
+      `🌇 ${new Date(d.sunset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
   }
 
+  // Removed tideChip section entirely
 }
+
 
 /* ---------- Scoring ---------- */
 function score(wave,wind,rain,dir){
