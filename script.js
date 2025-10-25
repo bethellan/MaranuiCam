@@ -243,13 +243,6 @@ function updateChips(d) {
                       `🌇 ${new Date(d.sunset).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}`;
   }
 
-  const tideChip=document.getElementById("tideChip");
-  if (tideChip && d.tide?.length){
-    const tides=findTideExtremes(d.tide,d.labelHours);
-    const highs=tides.highs.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
-    const lows=tides.lows.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
-    tideChip.innerHTML=`🌊 Highs: ${highs} | Lows: ${lows}`;
-  } else if (tideChip) tideChip.innerHTML="🌊 Tide data loading...";
 }
 
 /* ---------- Scoring ---------- */
