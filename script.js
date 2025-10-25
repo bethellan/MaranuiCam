@@ -178,46 +178,52 @@ async function fetchData() {
 }
 
 /* ---------- Build table ---------- */
+/* ---------- Build table ---------- */
 function buildTable(d) {
-  const thead = document.getElementById("thead");
-  const tbody = document.getElementById("tbody");
-  thead.innerHTML = tbody.innerHTML = "";
+  try {
+    const thead = document.getElementById("thead");
+    const tbody = document.getElementById("tbody");
+    thead.innerHTML = tbody.innerHTML = "";
 
-  const trH = document.createElement("tr");
-  trH.innerHTML = "<th>Metric</th>" +
-    d.labelHours.map(h=>`<th${isNight(d,h)?' class="night"':''}>${h.toLocaleTimeString([], {hour:'2-digit'})}</th>`).join("");
-  thead.appendChild(trH);
+    const trH = document.createElement("tr");
+    trH.innerHTML = "<th>Metric</th>" +
+      d.labelHours.map(h=>`<th${isNight(d,h)?' class="night"':''}>${h.toLocaleTimeString([], {hour:'2-digit'})}</th>`).join("");
+    thead.appendChild(trH);
 
-  const rows = [
-    ["Wave (m)", d.wave, v=>v?.toFixed(1)??"—"],
-    ["Period (s)", d.waveP, v=>v?.toFixed(0)??"—"],
-    ["Wind (km/h)", d.wind, v=>v?.toFixed(0)??"—"],
-    ["Gusts (km/h)", d.gusts, v=>v?.toFixed(0)??"—"],
-    ["Direction", d.windDir, v=> v!=null ? `${degToCompass(v)} <span style='transform:rotate(${v}deg)' class='dir-arrow'>➤</span>` : "—"],
-    ["Rain (mm/hr)", d.rain, v=>v?.toFixed(1)??"—"],
-    ["Tide (m)", d.tide, v=>v?.toFixed(2)??"—"]
-  ];
+    const rows = [
+      ["Wave (m)", d.wave, v=>v?.toFixed(1)??"—"],
+      ["Period (s)", d.waveP, v=>v?.toFixed(0)??"—"],
+      ["Wind (km/h)", d.wind, v=>v?.toFixed(0)??"—"],
+      ["Gusts (km/h)", d.gusts, v=>v?.toFixed(0)??"—"],
+      ["Direction", d.windDir, v=> v!=null ? `${degToCompass(v)} <span style='transform:rotate(${v}deg)' class='dir-arrow'>➤</span>` : "—"],
+      ["Rain (mm/hr)", d.rain, v=>v?.toFixed(1)??"—"],
+      ["Tide (m)", d.tide, v=>v?.toFixed(2)??"—"]
+    ];
 
-  rows.forEach(([label, arr, fmt])=>{
+    rows.forEach(([label, arr, fmt])=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML="<th>"+label+"</th>"+
+        arr.map((v,i)=>`<td${isNight(d,i)?' class="night"':''}>${fmt(v)}</td>`).join("");
+      tbody.appendChild(tr);
+    });
+
+    const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i],d.waveP[i], d.waveD[i] ));
     const tr=document.createElement("tr");
-    tr.innerHTML="<th>"+label+"</th>"+
-      arr.map((v,i)=>`<td${isNight(d,i)?' class="night"':''}>${fmt(v)}</td>`).join("");
+    tr.innerHTML="<th>Surfability (1–10)</th>"+
+      surf.map((v,i)=>{
+        const cls = v>=8?"good":v>=5?"fair":"poor";
+        return `<td class="scale-surf ${cls}${isNight(d,i)?' night':''}">${v.toFixed(1)}</td>`;
+      }).join("");
     tbody.appendChild(tr);
-  });
 
-  const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i],d.waveP[i], d.waveD[i] ));
-  const tr=document.createElement("tr");
-  tr.innerHTML="<th>Surfability (1–10)</th>"+
-    surf.map((v,i)=>{
-      const cls = v>=8?"good":v>=5?"fair":"poor";
-      return `<td class="scale-surf ${cls}${isNight(d,i)?' night':''}">${v.toFixed(1)}</td>`;
-    }).join("");
-  tbody.appendChild(tr);
-
-  const now = surf[0];
-  const badge=document.getElementById("scoreBadge");
-  badge.textContent=`Surfability ${now.toFixed(1)}`;
-  badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
+    const now = surf[0];
+    const badge=document.getElementById("scoreBadge");
+    badge.textContent=`Surfability ${now.toFixed(1)}`;
+    badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
+  } catch (error) {
+    console.error("Error building table:", error);
+    document.getElementById("dataStatus").textContent = "❌ Table Error";
+  }
 }
 
 function isNight(d, h) {
@@ -257,6 +263,7 @@ function updateChips(d) {
 }
 
 /* ---------- Scoring ---------- */
+/* ---------- Scoring ---------- */
 function score(wave, wind, rain, dir, wavePeriod, waveDirection) {
   if(wave == null) return 0;
   
@@ -272,8 +279,8 @@ function score(wave, wind, rain, dir, wavePeriod, waveDirection) {
   else if (wavePeriod > 7) cleanliness += 0.2; // Medium period = decent
   else if (wavePeriod < 5) cleanliness -= 0.3; // Short period = choppy
   
-  // Wind-wave alignment (offshore bonus)
-  if (dir && waveDirection) {
+  // Wind-wave alignment (offshore bonus) - ONLY if both directions exist
+  if (dir != null && waveDirection != null) {
     const diff = Math.abs(dir - waveDirection);
     const offshoreAngle = Math.min(diff, 360 - diff);
     if (offshoreAngle < 45) cleanliness += 0.3; // Offshore winds
