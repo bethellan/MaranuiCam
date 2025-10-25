@@ -83,7 +83,7 @@ async function fetchData() {
 function buildTable(e){const t=document.getElementById("thead"),n=document.getElementById("tbody");t.innerHTML=n.innerHTML="";const a=document.createElement("tr");a.innerHTML="<th>Metric</th>"+e.labelHours.map(t=>`<th${isNight(e,t)?' class="night"':''}>${t.toLocaleTimeString([],{hour:"2-digit"})}</th>`).join(""),t.appendChild(a);const r=[["Wave (m)",e.wave,t=>t?.toFixed(1)??"—"],["Period (s)",e.waveP,t=>t?.toFixed(0)??"—"],["Wind (km/h)",e.wind,t=>t?.toFixed(0)??"—"],["Gusts (km/h)",e.gusts,t=>t?.toFixed(0)??"—"],["Direction",e.windDir,t=>t!=null?`${degToCompass(t)} <span style='transform:rotate(${t}deg)' class='dir-arrow'>➤</span>`:"—"],["Rain (mm/hr)",e.rain,t=>t?.toFixed(1)??"—"],["Tide (m)",e.tide,t=>t?.toFixed(2)??"—"]];r.forEach(([t,a,r])=>{const i=document.createElement("tr");i.innerHTML="<th>"+t+"</th>"+a.map((t,n)=>`<td${isNight(e,n)?' class="night"':''}>${r(t)}</td>`).join(""),n.appendChild(i)});const i=e.labelHours.map((t,n)=>score(e.wave[n],e.wind[n],e.rain[n],e.windDir[n],e.waveP[n],e.tide[n])),o=document.createElement("tr");o.innerHTML="<th>Surfability (1–10)</th>"+i.map((t,n)=>{const a=t>=8?"good":t>=5?"fair":"poor";return`<td class="scale-surf ${a}${isNight(e,n)?' night':''}">${t.toFixed(1)}</td>`}).join(""),n.appendChild(o);const s=i[0],l=document.getElementById("scoreBadge");l.textContent=`Surfability ${s.toFixed(1)}`;l.className="chip score "+(s>=8?"good":s>=5?"fair":"poor")}
 function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new Date(e.sunrise)||n>=new Date(e.sunset)}
 
-/* ---------- NIWA Tide Predictions (authenticated + debug) ---------- */
+/* ---------- NIWA Tide Predictions (authenticated, robust parser) ---------- */
 async function fetchTidePredictionsNIWA() {
   try {
     const url = `https://api.niwa.co.nz/tides/data?lat=-41.327&long=174.794`;
@@ -91,21 +91,51 @@ async function fetchTidePredictionsNIWA() {
     if (!resp.ok) throw new Error("NIWA request failed: " + resp.status);
 
     const data = await resp.json();
-    console.log("NIWA Tide Data:", data);
+    console.log("NIWA Tide Data (raw):", data);
 
-    // Convert NIWA “values” format → HIGH/LOW list
-    const raw = data.values || [];
-    const predictions = raw.map(p => ({
-      time: p.time,
-      height: p.value,
-      type: p.event.toUpperCase()
-    }));
+    // NIWA variants seen in the wild:
+    // - { predictions: [{ time, height, type } ...] }
+    // - { values: [{ time, value, event } ...] }
+    // - { data:    [{ time, value, event } ...] }
+    const rows =
+      (Array.isArray(data.predictions) && data.predictions) ||
+      (Array.isArray(data.values) && data.values) ||
+      (Array.isArray(data.data) && data.data) ||
+      [];
 
-    predictions.forEach(p => console.log(`${p.type} ${p.time} (${p.height} m)`));
+    // Normalise to { time, height, type: "HIGH"/"LOW" }
+    const norm = rows
+      .map((p) => {
+        const time =
+          p.time || p.dateTime || p.datetime || p.t || p.ts || null;
+
+        const height =
+          (p.height ?? p.value ?? p.level ?? p.meters ?? null);
+
+        let rawType = (p.type ?? p.event ?? p.state ?? p.kind ?? "").toString().toLowerCase();
+
+        // Map a variety of labels to HIGH/LOW
+        let type = null;
+        if (rawType.includes("high") || rawType === "h" || rawType === "hi") type = "HIGH";
+        if (rawType.includes("low")  || rawType === "l" || rawType === "lo") type = "LOW";
+
+        // Some NIWA payloads have height but no explicit type; infer by local extremum flag if present
+        if (!type && typeof p.extreme === "string") {
+          const ex = p.extreme.toLowerCase();
+          if (ex.includes("high")) type = "HIGH";
+          if (ex.includes("low"))  type = "LOW";
+        }
+
+        return (time && type) ? { time, height, type } : null;
+      })
+      .filter(Boolean);
+
+    // Log a preview so we can verify
+    console.table(norm.slice(0, 6));
 
     return {
-      highs: predictions.filter(p => p.type === "HIGH"),
-      lows:  predictions.filter(p => p.type === "LOW"),
+      highs: norm.filter(e => e.type === "HIGH"),
+      lows:  norm.filter(e => e.type === "LOW"),
       offline: false
     };
   } catch (err) {
@@ -115,10 +145,48 @@ async function fetchTidePredictionsNIWA() {
 }
 
 
+
 /* ---------- Update Chips ---------- */
 function updateChips(d){const fmt=t=>new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"});
 const sunChip=document.getElementById("sunChip");if(sunChip&&d.sunrise&&d.sunset){sunChip.innerHTML=`🌅 ${fmt(d.sunrise)}  🌇 ${fmt(d.sunset)}`}
-const tideChip=document.getElementById("tideChip");if(tideChip){if(d.tideTimes&&d.tideTimes.highs?.length&&d.tideTimes.lows?.length){const highs=d.tideTimes.highs.map(e=>({t:new Date(e.time),h:e.height}));const lows=d.tideTimes.lows.map(e=>({t:new Date(e.time),h:e.height}));const highStr=highs.map(e=>`${fmt(e.t)} (${e.h.toFixed(2)} m)`).join("  ");const lowStr=lows.map(e=>`${fmt(e.t)} (${e.h.toFixed(2)} m)`).join("  ");tideChip.innerHTML=`🌊 HIGH: ${highStr}  LOW: ${lowStr}`}else{tideChip.innerHTML="🌊 Tide data unavailable"}}}
+// 🌊 Tide (show next 2 highs + next 2 lows for today, Pacific/Auckland)
+const tideChip = document.getElementById("tideChip");
+if (tideChip) {
+  const zone = "Pacific/Auckland";
+  const fmt = (d) => new Date(d).toLocaleTimeString("en-NZ", {
+    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: zone
+  });
+
+  if (d.tideTimes && (d.tideTimes.highs?.length || d.tideTimes.lows?.length)) {
+    const now = new Date();
+    const todayNZ = now.toLocaleDateString("en-NZ", { timeZone: zone });
+
+    // Flatten + sort by local time
+    const events = [
+      ...(d.tideTimes.highs || []).map(e => ({...e, kind: "HIGH"})),
+      ...(d.tideTimes.lows  || []).map(e => ({...e, kind: "LOW"})),
+    ].map(e => {
+      const local = new Date(e.time);
+      return { ...e, local };
+    }).sort((a,b) => a.local - b.local);
+
+    // Keep only today’s events in NZ local date; if empty, fall back to next events
+    const todays = events.filter(e =>
+      e.local.toLocaleDateString("en-NZ", { timeZone: zone }) === todayNZ
+    );
+    const pool = todays.length ? todays : events;
+
+    const highs = pool.filter(e => e.kind === "HIGH").slice(0, 2);
+    const lows  = pool.filter(e => e.kind === "LOW").slice(0, 2);
+
+    const highStr = highs.map(e => `${fmt(e.local)}${e.height!=null?` (${(+e.height).toFixed(2)} m)`:``}`).join("  ");
+    const lowStr  = lows .map(e => `${fmt(e.local)}${e.height!=null?` (${(+e.height).toFixed(2)} m)`:``}`).join("  ");
+
+    tideChip.innerHTML = `🌊 HIGH: ${highStr || "—"}  LOW: ${lowStr || "—"}`;
+  } else {
+    tideChip.innerHTML = "🌊 Tide data unavailable";
+  }
+}
 
 /* ---------- Surfability Calculation (Lyall Bay tuned) ---------- */
 function score(wave,wind,rain,windDir,period,tide){if(wave==null)return 0;let s=10;s-=Math.abs(wave-1.2)*4;if(period>7)s+=Math.min(3,(period-7)*0.5);if(wind>15)s-=(wind-15)*0.2;if(windDir!=null){if(windDir>=315||windDir<=45)s+=2;else if(windDir>=135&&windDir<=225)s-=2}if(rain>0.5)s-=1;if(tide!=null&&(tide<0.6||tide>1.6))s-=1;return Math.max(0,Math.min(10,s))}
