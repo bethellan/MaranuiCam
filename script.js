@@ -38,10 +38,7 @@ function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new D
 /* ---------- NIWA Tide Predictions (authenticated + debug) ---------- */
 async function fetchTidePredictionsNIWA() {
   try {
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-    const url = `https://api.niwa.co.nz/tides/data?lat=-41.327&long=174.794&start=${today}&end=${tomorrow}`;
-    
+    const url = `https://api.niwa.co.nz/tides/data?lat=-41.327&long=174.794`;
     const resp = await fetch(url, {
       headers: { "x-apikey": NIWA_KEY }
     });
@@ -50,7 +47,9 @@ async function fetchTidePredictionsNIWA() {
     console.log("NIWA Tide Data:", data);
 
     if (data.predictions) {
-      data.predictions.forEach(p => console.log(`${p.type} ${p.time} (${p.height} m)`));
+      data.predictions.forEach(p =>
+        console.log(`${p.type} ${p.time} (${p.height} m)`)
+      );
     }
 
     return {
