@@ -134,11 +134,17 @@ Wave Height Scoring:
 1.5–2.5m = 7–9.5 (great for experienced)
 &gt; 2.5m = 9 (excellent big waves)
 
+Cleanliness Factors:
++0.5 for wave period &gt; 10s (clean)
++0.2 for wave period 7–10s (decent)
+−0.3 for wave period &lt; 5s (choppy)
++0.3 for offshore winds (aligned)
+−0.3 for onshore winds (messy)
+
 Adjustments:
 −((wind − 20)/5) if wind &gt; 20 km/h
 −2 if rain &gt; 0.5 mm/hr
-+1 if wind dir 200–340° (offshore/cross)
-clamped between 0 and 10
++1 if wind dir 200–340° (offshore)
     </pre>
 
     <p><strong>8–10:</strong> Excellent · <strong>5–7.9:</strong> Fair · <strong>&lt;5:</strong> Poor</p>
