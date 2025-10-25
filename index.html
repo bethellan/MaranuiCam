@@ -72,8 +72,17 @@
 
     <!-- 24h Conditions Table -->
     <section class="conditions" aria-label="24-hour forecast">
-      <h2 class="panel-title">24-Hour Forecast — Lyall Bay (metric)</h2>
-      <div class="table-scroll" role="region" aria-live="polite">
+      <!-- Day navigation and heading -->
+<div class="day-nav">
+  <button id="prevDay" class="nav-btn">← Previous Day</button>
+  <h2 class="panel-title" id="dayTitle">
+    24-Hour Forecast — Lyall Bay (Today)
+  </h2>
+  <button id="nextDay" class="nav-btn">Next Day →</button>
+</div>
+
+<div class="table-scroll" role="region" aria-live="polite">
+
         <table id="condTable" class="cond-table" aria-describedby="tableHelp">
           <thead id="thead"></thead>
           <tbody id="tbody"></tbody>
