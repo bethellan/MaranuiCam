@@ -122,6 +122,39 @@
   </p>
 </footer>
 
+<!-- About Info Panel -->
+<button id="aboutBtn" class="about-btn">ℹ️ About Data</button>
+
+<div id="aboutPanel" class="about-panel">
+  <div class="about-content">
+    <h3>About This Data</h3>
+    <p>The hourly forecast table and Surfability score use live data for Lyall Bay, Wellington.</p>
+
+    <ul>
+      <li><strong>Open-Meteo Forecast API</strong> – wind speed, gusts, direction, and rainfall.</li>
+      <li><strong>Open-Meteo Marine API</strong> – wave height, period, and direction.</li>
+      <li><strong>Open-Meteo Tide API</strong> – tide height estimates.</li>
+      <li><strong>Sunrise-Sunset.org</strong> – sunrise and sunset times.</li>
+    </ul>
+
+    <p>Data updates every <strong>30 minutes</strong> and covers the <strong>next 24 hours</strong> in local time.
+    If live data is unavailable, a built-in offline dataset ensures the table still displays.</p>
+
+    <h4>Surfability Calculation</h4>
+    <pre>
+Base = 10 − |wave_height − 1.0| × 5
+−((wind − 20)/5) if wind &gt; 20 km/h
+−2 if rain &gt; 0.5 mm/hr
++1 if wind dir 200–340° (offshore/cross)
+clamped between 0 and 10
+    </pre>
+
+    <p><strong>8–10:</strong> Excellent · <strong>5–7.9:</strong> Fair · <strong>&lt;5:</strong> Poor</p>
+
+    <button id="closeAbout" class="about-close">Close</button>
+  </div>
+</div>
+
   
 </body>
 </html>
