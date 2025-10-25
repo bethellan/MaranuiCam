@@ -76,9 +76,8 @@ function updateChips(d) {
       ...tides.lows.map(t => ({ type: "LOW", time: t.time }))
     ].map(ev => {
       // Treat raw timestamp as UTC explicitly
-      const utc = typeof ev.time === "string" ? ev.time : ev.time.toISOString();
-      const utcDate = new Date(utc + "Z"); // force UTC parse
-      const local = new Date(utcDate.toLocaleString("en-NZ", { timeZone: "Pacific/Auckland" }));
+      const raw = typeof ev.time === "string" ? ev.time : ev.time.toISOString();
+      const local = new Date(raw); // interpret as local if already local, or valid ISO if UTC
       return { ...ev, local };
     });
 
