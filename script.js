@@ -253,6 +253,7 @@ function findTideExtremes(tideHeights, hours) {
 
 
 /* ---------- Update chips ---------- */
+/* ---------- Update chips ---------- */
 function updateChips(d) {
   const sunChip = document.getElementById("sunChip");
   if (sunChip) {
