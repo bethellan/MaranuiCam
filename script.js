@@ -101,6 +101,7 @@ function offlineData() {
     labelHours: hours,
     wave: hours.map(()=>fake(0.8,1.6)),
     waveP: hours.map(()=>fake(7,10)),
+    waveD: hours.map(()=>Math.floor(Math.random()*360)),
     wind: hours.map(()=>fake(8,20)),
     gusts: hours.map(()=>fake(12,28)),
     windDir: hours.map(()=>Math.floor(Math.random()*360)),
