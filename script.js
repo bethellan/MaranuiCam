@@ -1,5 +1,6 @@
-// ===== v6.4.9 MaranuiCam — Full table + NIWA tide debug + surfability (Lyall Bay tuned) =====
+// ===== v6.5.0 MaranuiCam — NIWA authenticated tides + debug logging + full table intact =====
 const LAT = -41.327, LON = 174.794;
+const NIWA_KEY = "AaVzAAAEjgZnzj1oZGopBRuRAsBGEE25"; // your NIWA App Key — keep safe
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 
@@ -34,9 +35,8 @@ async function fetchData(){const e=`https://api.open-meteo.com/v1/forecast?latit
 function buildTable(e){const t=document.getElementById("thead"),n=document.getElementById("tbody");t.innerHTML=n.innerHTML="";const a=document.createElement("tr");a.innerHTML="<th>Metric</th>"+e.labelHours.map(t=>`<th${isNight(e,t)?' class="night"':''}>${t.toLocaleTimeString([],{hour:"2-digit"})}</th>`).join(""),t.appendChild(a);const r=[["Wave (m)",e.wave,t=>t?.toFixed(1)??"—"],["Period (s)",e.waveP,t=>t?.toFixed(0)??"—"],["Wind (km/h)",e.wind,t=>t?.toFixed(0)??"—"],["Gusts (km/h)",e.gusts,t=>t?.toFixed(0)??"—"],["Direction",e.windDir,t=>t!=null?`${degToCompass(t)} <span style='transform:rotate(${t}deg)' class='dir-arrow'>➤</span>`:"—"],["Rain (mm/hr)",e.rain,t=>t?.toFixed(1)??"—"],["Tide (m)",e.tide,t=>t?.toFixed(2)??"—"]];r.forEach(([t,a,r])=>{const i=document.createElement("tr");i.innerHTML="<th>"+t+"</th>"+a.map((t,n)=>`<td${isNight(e,n)?' class="night"':''}>${r(t)}</td>`).join(""),n.appendChild(i)});const i=e.labelHours.map((t,n)=>score(e.wave[n],e.wind[n],e.rain[n],e.windDir[n],e.waveP[n],e.tide[n])),o=document.createElement("tr");o.innerHTML="<th>Surfability (1–10)</th>"+i.map((t,n)=>{const a=t>=8?"good":t>=5?"fair":"poor";return`<td class="scale-surf ${a}${isNight(e,n)?' night':''}">${t.toFixed(1)}</td>`}).join(""),n.appendChild(o);const s=i[0],l=document.getElementById("scoreBadge");l.textContent=`Surfability ${s.toFixed(1)}`;l.className="chip score "+(s>=8?"good":s>=5?"fair":"poor")}
 function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new Date(e.sunrise)||n>=new Date(e.sunset)}
 
-/* ---------- NIWA Tide Predictions (debug) ---------- */
-async function fetchTidePredictionsNIWA(){try{const url="https://api.niwa.co.nz/tides/data?station=Wellington&format=json";const resp=await fetch(url);if(!resp.ok)throw new Error("NIWA request failed");const data=await resp.json();console.log("NIWA Tide API:",data); // debug output
-return{highs:data.highs||data.predictions?.filter(p=>p.type==="HIGH")||[],lows:data.lows||data.predictions?.filter(p=>p.type==="LOW")||[],offline:!1}}catch(err){console.warn("NIWA tide fetch failed, falling back:",err);return{highs:[],lows:[],offline:!0}}}
+/* ---------- NIWA Tide Predictions (authenticated + debug) ---------- */
+async function fetchTidePredictionsNIWA(){try{const url="https://api.niwa.co.nz/tides/data?station=Wellington&format=json";const resp=await fetch(url,{headers:{"x-apikey":NIWA_KEY}});if(!resp.ok)throw new Error("NIWA request failed: "+resp.status);const data=await resp.json();console.log("NIWA Tide Data:");if(data.predictions){data.predictions.forEach(p=>console.log(`${p.type} ${p.time} (${p.height} m)`));}return{highs:data.predictions?.filter(p=>p.type==="HIGH")||[],lows:data.predictions?.filter(p=>p.type==="LOW")||[],offline:!1}}catch(err){console.warn("NIWA tide fetch failed, falling back:",err);return{highs:[],lows:[],offline:!0}}}
 
 /* ---------- Update Chips ---------- */
 function updateChips(d){const fmt=t=>new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Pacific/Auckland"});
