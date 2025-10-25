@@ -204,7 +204,7 @@ function buildTable(d) {
     tbody.appendChild(tr);
   });
 
-  const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
+  const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i],d.waveP[i], d.waveD[i] ));
   const tr=document.createElement("tr");
   tr.innerHTML="<th>Surfability (1–10)</th>"+
     surf.map((v,i)=>{
@@ -255,20 +255,38 @@ function updateChips(d) {
   // Removed tideChip section entirely
 }
 
-
 /* ---------- Scoring ---------- */
-function score(wave,wind,rain,dir){
-  if(wave==null) return 0;
-  let s;
-  if (wave < 0.5) s = 3;                    // Too small
-  else if (wave <= 1.5) s = 5 + (wave-0.5); // Good range: 0.5-1.5m (5-7.5)
-  else if (wave <= 2.5) s = 7 + (wave-1.5); // Great range: 1.5-2.5m (7-9.5)  
-  else s = 9;                               // Maximum score for big waves (2.5m+)
+function score(wave, wind, rain, dir, wavePeriod, waveDirection) {
+  if(wave == null) return 0;
   
-  s -= wind>20? (wind-20)/5 : 0;
-  if(rain>0.5) s-=2;
-  if(dir && (dir<200||dir>340)) s+=1;
-  return Math.max(0,Math.min(10,s));
+  let s;
+  if (wave < 0.5) s = 3;
+  else if (wave <= 1.5) s = 5 + (wave-0.5);
+  else if (wave <= 2.5) s = 7 + (wave-1.5);  
+  else s = 9;
+
+  // Wave cleanliness factor (using wave period)
+  let cleanliness = 1.0;
+  if (wavePeriod > 10) cleanliness += 0.5;    // Long period = cleaner waves
+  else if (wavePeriod > 7) cleanliness += 0.2; // Medium period = decent
+  else if (wavePeriod < 5) cleanliness -= 0.3; // Short period = choppy
+  
+  // Wind-wave alignment (offshore bonus)
+  if (dir && waveDirection) {
+    const diff = Math.abs(dir - waveDirection);
+    const offshoreAngle = Math.min(diff, 360 - diff);
+    if (offshoreAngle < 45) cleanliness += 0.3; // Offshore winds
+    else if (offshoreAngle > 135) cleanliness -= 0.3; // Onshore winds
+  }
+  
+  s *= cleanliness; // Apply cleanliness multiplier
+  
+  // Traditional penalties
+  s -= wind > 20 ? (wind-20)/5 : 0;
+  if(rain > 0.5) s -= 2;
+  if(dir && (dir < 200 || dir > 340)) s += 1;
+  
+  return Math.max(0, Math.min(10, s));
 }
 
 /* ---------- Refresh cycle ---------- */
