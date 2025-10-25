@@ -36,16 +36,63 @@ function isNight(e,t){const n=t instanceof Date?t:e.labelHours[t];return n<new D
 
 /* ---------- Tides ---------- */
 /* ---------- Find all high/low tides (local-safe) ---------- */
-function findTideExtremes(tideHeights, hours) {
-  const highs = [], lows = [];
+// Find highs/lows from hourly heights with alternation and de-dupe (mergeWindow minutes)
+function findTideExtremes(tideHeights, hours, mergeWindowMin = 120) {
+  const events = [];
+
+  // 1) Raw local maxima/minima by sign change of slope
   for (let i = 1; i < tideHeights.length - 1; i++) {
-    const prev = tideHeights[i - 1], curr = tideHeights[i], next = tideHeights[i + 1];
-    if (prev == null || curr == null || next == null) continue;
-    if (curr > prev && curr > next) highs.push({ time: hours[i], height: curr });
-    if (curr < prev && curr < next) lows.push({ time: hours[i], height: curr });
+    const p = tideHeights[i - 1], c = tideHeights[i], n = tideHeights[i + 1];
+    if (p == null || c == null || n == null) continue;
+    const up = c - p, down = n - c;
+    if (up > 0 && down < 0) {
+      events.push({ type: "HIGH", time: hours[i], height: c });
+    } else if (up < 0 && down > 0) {
+      events.push({ type: "LOW", time: hours[i], height: c });
+    }
   }
-  return { highs, lows };
+
+  // 2) Sort by time (as Dates, no UTC forcing)
+  events.forEach(e => e.local = new Date(typeof e.time === "string" ? e.time : e.time.toISOString()));
+  events.sort((a, b) => a.local - b.local);
+
+  // 3) Merge near-duplicates of the same type within mergeWindow (keep the more “extreme”)
+  const merged = [];
+  const winMs = mergeWindowMin * 60 * 1000;
+  for (const e of events) {
+    const last = merged[merged.length - 1];
+    if (last && last.type === e.type && (e.local - last.local) <= winMs) {
+      // keep the more extreme (higher HIGH, lower LOW)
+      const keepE = e.type === "HIGH"
+        ? (e.height >= last.height ? e : last)
+        : (e.height <= last.height ? e : last);
+      merged[merged.length - 1] = keepE;
+    } else {
+      merged.push(e);
+    }
+  }
+
+  // 4) Enforce alternation HIGH ↔ LOW (drop same-type repeats)
+  const alternating = [];
+  for (const e of merged) {
+    const prev = alternating[alternating.length - 1];
+    if (!prev || prev.type !== e.type) alternating.push(e);
+    else {
+      // same type back-to-back: keep the more “extreme”
+      const keepE = e.type === "HIGH"
+        ? (e.height >= prev.height ? e : prev)
+        : (e.height <= prev.height ? e : prev);
+      alternating[alternating.length - 1] = keepE;
+    }
+  }
+
+  // Return separated arrays for convenience
+  return {
+    highs: alternating.filter(e => e.type === "HIGH"),
+    lows:  alternating.filter(e => e.type === "LOW")
+  };
 }
+
 
 /* ---------- Update chips (local 4-tide robust) ---------- */
 function updateChips(d) {
@@ -71,15 +118,32 @@ function updateChips(d) {
 
     // Combine & localize
        // Make sure all times are parsed as UTC before converting to NZ local
-    const events = [
-      ...tides.highs.map(t => ({ type: "HIGH", time: t.time })),
-      ...tides.lows.map(t => ({ type: "LOW", time: t.time }))
-    ].map(ev => {
-      // Treat raw timestamp as UTC explicitly
-      const raw = typeof ev.time === "string" ? ev.time : ev.time.toISOString();
-      const local = new Date(raw); // interpret as local if already local, or valid ISO if UTC
-      return { ...ev, local };
-    });
+   // Sort, filter to today (NZ local), and pick up to 2 highs + 2 lows
+events.sort((a, b) => a.local - b.local);
+
+const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
+const todays = events.filter(ev =>
+  ev.local.toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" }) === todayLocal
+);
+
+const highsToday = todays.filter(e => e.type === "HIGH").slice(0, 2);
+const lowsToday  = todays.filter(e => e.type === "LOW").slice(0, 2);
+
+// If the API day-edge gives fewer than 2, backfill from nearest events
+function ensureTwo(arr, wantType) {
+  if (arr.length >= 2) return arr;
+  const extras = events.filter(e => e.type === wantType && !arr.includes(e));
+  return arr.concat(extras).slice(0, 2);
+}
+const highsShow = ensureTwo(highsToday, "HIGH");
+const lowsShow  = ensureTwo(lowsToday,  "LOW");
+
+const fmt = t => t.toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Pacific/Auckland" });
+const highStr = highsShow.map(e => fmt(e.local)).join("  ");
+const lowStr  = lowsShow .map(e => fmt(e.local)).join("  ");
+
+tideChip.innerHTML = `🌊 HIGH: ${highStr || "—"}  LOW: ${lowStr || "—"}`;
+
 
 
     // Sort by local time
