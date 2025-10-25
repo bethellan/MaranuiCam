@@ -280,6 +280,12 @@ html,body{margin:0;padding:0;background:var(--cream);color:var(--text);font-fami
   }
 }
 
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
 
 
 @media (max-width:640px){ .header-logo{height:24px} }
