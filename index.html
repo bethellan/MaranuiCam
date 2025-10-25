@@ -136,25 +136,44 @@
     If live data is unavailable, a built-in offline dataset ensures the table still displays.</p>
 
     <h4>Surfability Calculation</h4>
-    <pre>
-Wave Height Scoring:
-&lt; 0.5m = 3 (too small)
-0.5–1.5m = 5–7.5 (good for beginners)
-1.5–2.5m = 7–9.5 (great for experienced)
-&gt; 2.5m = 9 (excellent big waves)
+   <pre>
+Surfability is rated 0–10 based on wave height, swell period, wind, and rain:
 
-Cleanliness Factors:
-+0.5 for wave period &gt; 10s (clean)
-+0.2 for wave period 7–10s (decent)
-−0.3 for wave period &lt; 5s (choppy)
-+0.3 for offshore winds (aligned)
-−0.3 for onshore winds (messy)
+1️⃣ Base Size Score (non-linear growth)
+0.3 m  = 1
+0.5 m  = 2
+1.0 m  = 4
+1.5 m  = 6
+2.0 m  = 8
+3.0 m  = 9
+4.0+ m = 10 (then capped)
+• Waves > 3 m are slightly penalised as “too big”.
 
-Adjustments:
-−((wind − 20)/5) if wind &gt; 20 km/h
-−2 if rain &gt; 0.5 mm/hr
-+1 if wind dir 200–340° (offshore)
-    </pre>
+2️⃣ Swell Period Adjustment
++1.0  for period > 11s (clean, long-period swell)
++0.5  for 8–11s (decent period)
+−1.0  for ≤ 5s (short and choppy)
+
+3️⃣ Wind Direction Alignment
++1.0  for offshore (wind blowing out to sea)
+−1.0  for onshore (wind blowing into waves)
+−0.5  for cross-shore (blowing along the beach)
+
+4️⃣ Wind Strength Penalty
+−((wind − 15) / 5)   if wind > 15 km/h
+−((wind − 25) / 2)   if wind > 25 km/h
+
+5️⃣ Rain Penalty
+−1.5  if rain > 0.5 mm/hr
+−2.5  if rain > 2.0 mm/hr
+
+Result is clamped between 0 and 10.
+
+🟢 8–10: Excellent (powerful, clean, offshore)
+🟡 5–7.9: Fair (rideable, small/moderate, some chop)
+🔴 <5: Poor (onshore, weak, or messy)
+</pre>
+
 
     <p><strong>8–10:</strong> Excellent · <strong>5–7.9:</strong> Fair · <strong>&lt;5:</strong> Poor</p>
     <p><em>Note: This formula rewards bigger waves that experienced surfers and kids prefer!</em></p>
