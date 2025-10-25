@@ -1,247 +1,310 @@
-// ===== v6.5.1 MaranuiCam — fully stable build =====
+// ===== v6.4.4 MaranuiCam — precise sunrise/sunset + full 24h tides =====
 const LAT = -41.327, LON = 174.794;
-const NIWA_KEY = "AaVzAAAEjgZnzj1oZGopBRuRAsBGEE25";
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 
 const frame = document.getElementById("liveFrame");
 const camToggle = document.getElementById("camToggle");
-let showingSurf = true, youtubeAPIReady = false, player, overlayAdded = false;
+let showingSurf = true;
+let youtubeAPIReady = false;
+let player;
+let overlayAdded = false;
+
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-/* ---------- YouTube ---------- */
+// Load YouTube IFrame API
 function loadYouTubeAPI() {
-  const s = document.createElement("script");
-  s.src = "https://www.youtube.com/iframe_api";
-  document.head.appendChild(s);
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 }
-window.onYouTubeIframeAPIReady = () => (youtubeAPIReady = true, initPlayer());
+
+// YouTube API ready callback
+window.onYouTubeIframeAPIReady = function() {
+  youtubeAPIReady = true;
+  initPlayer();
+};
+
 function initPlayer() {
   if (!frame || !youtubeAPIReady) return;
-  player = new YT.Player(frame, { events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange } });
+  player = new YT.Player(frame, {
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange
+    }
+  });
 }
-function onPlayerReady() {
+
+function onPlayerReady(event) {
   tryPlay();
-  ["touchstart", "click"].forEach(e => document.addEventListener(e, () => tryPlay(true), { once: true }));
+  ['touchstart','click'].forEach(evt => {
+    document.addEventListener(evt, () => tryPlay(true), { once: true });
+  });
 }
-function tryPlay(force = false) {
-  if (!player?.playVideo) return;
-  try { player.mute?.(); } catch {}
-  setTimeout(() => { try { player.playVideo(); } catch {} }, force ? 0 : 300);
-  setTimeout(() => { if (isIOS && !overlayAdded && !isPlaying()) addIOSOverlay(); }, 3000);
+
+function tryPlay(fromGesture=false){
+  if (!player || typeof player.playVideo !== 'function') return;
+  try { player.mute && player.mute(); } catch(e){}
+  setTimeout(() => { try { player.playVideo(); } catch(e){} }, fromGesture ? 0 : 300);
+  setTimeout(() => {
+    if (isIOS && !overlayAdded && !isPlaying()) addIOSOverlay();
+  }, 3000);
 }
-function isPlaying() {
-  try { return player?.getPlayerState() === YT.PlayerState.PLAYING; } catch { return false; }
+
+function isPlaying(){
+  try { return player && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING; }
+  catch { return false; }
 }
-function onPlayerStateChange(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    document.querySelector(".ios-play-overlay")?.remove(); overlayAdded = false;
-  } else if ([YT.PlayerState.PAUSED, YT.PlayerState.ENDED].includes(e.data)) {
-    setTimeout(() => try { player.playVideo(); } catch {} , 800);
+
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    const overlay = document.querySelector('.ios-play-overlay');
+    if (overlay) overlay.remove();
+    overlayAdded = false;
+  } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+    setTimeout(() => { try { player.playVideo(); } catch(e){} }, 800);
   }
 }
+
 function addIOSOverlay() {
-  const cam = document.querySelector(".cam");
+  const cam = document.querySelector('.cam');
   if (!cam || overlayAdded) return;
-  const o = document.createElement("div");
-  o.className = "ios-play-overlay";
-  o.textContent = "▶ Tap to Play Video";
-  o.onclick = () => tryPlay(true);
-  cam.appendChild(o);
+  const overlay = document.createElement('div');
+  overlay.className = 'ios-play-overlay';
+  overlay.textContent = '▶ Tap to Play Video';
+  overlay.addEventListener('click', () => {
+    tryPlay(true);
+  });
+  cam.appendChild(overlay);
   overlayAdded = true;
 }
+
+// Camera toggle
 function setToggle() {
   camToggle.classList.toggle("toggle--surf", showingSurf);
   camToggle.classList.toggle("toggle--airport", !showingSurf);
 }
-camToggle.onclick = () => {
-  showingSurf = !showingSurf; setToggle();
+
+camToggle.addEventListener("click", () => {
+  showingSurf = !showingSurf;
+  setToggle();
   frame.style.opacity = "0";
   setTimeout(() => {
     frame.src = showingSurf ? SURF_EMBED : AIRPORT_EMBED;
     frame.style.opacity = "1";
-    setTimeout(() => { window.YT && youtubeAPIReady && initPlayer(); tryPlay(); }, 400);
+    setTimeout(() => {
+      if (window.YT && youtubeAPIReady) initPlayer();
+      tryPlay();
+    }, 400);
   }, 200);
-};
-window.onload = () => {
-  setToggle(); loadYouTubeAPI();
-  document.getElementById("dateLabel").textContent = new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
-  refresh(); setInterval(refresh, 1800000);
-};
+});
+
+window.addEventListener("load", () => {
+  setToggle();
+  loadYouTubeAPI();
+  document.getElementById("dateLabel").textContent =
+    new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
+  refresh();
+  setInterval(refresh, 30*60*1000);
+});
 
 /* ---------- Helpers ---------- */
-function degToCompass(d) {
-  const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
-  return dirs[Math.round(d / 22.5) % 16];
-}
-function offlineData() {
-  const base = new Date(); base.setMinutes(0,0,0);
-  const hours = Array.from({ length: 24 }, (_, i) => new Date(base.getTime() + 36e5 * i));
-  const r = (a,b) => +(Math.random() * (b - a) + a).toFixed(1);
-  return {
-    labelHours: hours,
-    wave: hours.map(() => r(0.8, 1.6)),
-    waveP: hours.map(() => r(7, 10)),
-    wind: hours.map(() => r(8, 20)),
-    gusts: hours.map(() => r(12, 28)),
-    windDir: hours.map(() => Math.floor(Math.random() * 360)),
-    rain: hours.map(() => Math.random() < 0.1 ? r(0, 1.2) : 0),
-    tide: hours.map(() => r(0.6, 1.4)),
-    sunrise: new Date().setHours(7, 0, 0, 0),
-    sunset: new Date().setHours(19, 0, 0, 0),
-    offline: true
-  };
-}
-async function fetchSunTimes(lat, lon) {
-  try {
-    const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
-    const j = await res.json();
-    if (j.status === "OK") return { sunrise: new Date(j.results.sunrise), sunset: new Date(j.results.sunset) };
-  } catch (e) { console.warn("Sunrise fetch failed:", e); }
-  return { sunrise: new Date().setHours(7, 0), sunset: new Date().setHours(19, 0) };
+function toHourISO(d) { return new Date(d).toISOString().slice(0, 13) + ":00"; }
+function degToCompass(num) {
+  const arr = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return arr[Math.round(num / 22.5) % 16];
 }
 
-/* ---------- Open-Meteo (safe) ---------- */
-async function fetchData() {
-  const url1 = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=Pacific/Auckland&windspeed_unit=kmh`;
-  const url2 = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=Pacific/Auckland`;
+/* ---------- Offline fallback ---------- */
+function offlineData() {
+  const base = new Date(); base.setMinutes(0,0,0);
+  const hours = Array.from({ length: 24 }, (_, i) => new Date(base.getTime() + i*3600*1000));
+  const fake = (min,max)=> +(Math.random()*(max-min)+min).toFixed(1);
+  return {
+    labelHours: hours,
+    wave: hours.map(()=>fake(0.8,1.6)),
+    waveP: hours.map(()=>fake(7,10)),
+    wind: hours.map(()=>fake(8,20)),
+    gusts: hours.map(()=>fake(12,28)),
+    windDir: hours.map(()=>Math.floor(Math.random()*360)),
+    rain: hours.map(()=>Math.random()<0.1?fake(0,1.2):0),
+    tide: hours.map(()=>fake(0.6,1.4)),
+    sunrise: new Date().setHours(7,0,0,0),
+    sunset: new Date().setHours(19,0,0,0),
+    offline:true
+  };
+}
+
+/* ---------- Fetch sunrise/sunset with minute precision ---------- */
+async function fetchSunTimes(lat, lon) {
   try {
-    const [a, r] = await Promise.allSettled([fetch(url1), fetch(url2)]);
-    const o = a.value && a.value.ok ? await a.value.json() : {};
-    const s = r.value && r.value.ok ? await r.value.json() : {};
-    const arr = (x) => Array.isArray(x) ? x : [];
-    const hourly = o.hourly || {}, marine = s.hourly || {};
-    const now = new Date(); now.setMinutes(0,0,0);
-    const hours = Array.from({ length: 24 }, (_, i) => new Date(now.getTime() + 36e5 * i));
-    return {
+    const resp = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
+    const json = await resp.json();
+    if (json.status === "OK") {
+      return {
+        sunrise: new Date(json.results.sunrise),
+        sunset: new Date(json.results.sunset)
+      };
+    }
+  } catch (e) {
+    console.warn("Sunrise-Sunset fetch failed:", e);
+  }
+  return { sunrise: new Date().setHours(7,0,0,0), sunset: new Date().setHours(19,0,0,0) };
+}
+
+/* ---------- Fetch + align Open-Meteo data ---------- */
+async function fetchData() {
+  const forecast = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh`;
+  const marine   = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_period,wave_direction&timezone=auto`;
+  const tide     = `https://marine-api.open-meteo.com/v1/tide?latitude=${LAT}&longitude=${LON}&hourly=tide_height&timezone=auto`;
+
+  try {
+    const [fR, mR, tR] = await Promise.allSettled([ fetch(forecast), fetch(marine), fetch(tide) ]);
+    const f = fR.value && fR.value.ok ? await fR.value.json() : {};
+    const m = mR.value && mR.value.ok ? await mR.value.json() : {};
+    const t = tR.value && tR.value.ok ? await tR.value.json() : {};
+
+    const base = new Date(); base.setMinutes(0,0,0);
+    const hours = Array.from({ length: 24 }, (_,i)=>new Date(base.getTime()+i*3600*1000));
+
+    const idx = a => a ? Object.fromEntries(a.time.map((v,i)=>[v,i])) : {};
+    const iF = idx(f.hourly||{}), iM = idx(m.hourly||{}), iT = idx(t.hourly||{});
+
+    const data = {
       labelHours: hours,
-      wind: arr(hourly.wind_speed_10m),
-      gusts: arr(hourly.wind_gusts_10m),
-      windDir: arr(hourly.wind_direction_10m),
-      rain: arr(hourly.precipitation),
-      wave: arr(marine.wave_height),
-      waveP: arr(marine.wave_period),
-      waveD: arr(marine.wave_direction),
-      tide: Array(24).fill(null),
-      sunrise: o.daily?.sunrise ? new Date(o.daily.sunrise[0]) : new Date().setHours(7,0),
-      sunset: o.daily?.sunset ? new Date(o.daily.sunset[0]) : new Date().setHours(19,0),
-      offline: false
+      wind: [], gusts: [], windDir: [], rain: [],
+      wave: [], waveP: [], waveD: [], tide: [],
+      sunrise: f.daily?.sunrise ? new Date(f.daily.sunrise[0]) : new Date().setHours(7,0),
+      sunset:  f.daily?.sunset  ? new Date(f.daily.sunset[0])  : new Date().setHours(19,0),
+      offline:false
     };
+
+    hours.forEach(h=>{
+      const iso = toHourISO(h);
+      const fI=iF[iso], mI=iM[iso], tI=iT[iso];
+      data.wind.push(fI!=null? f.hourly.wind_speed_10m[fI]:null);
+      data.gusts.push(fI!=null? f.hourly.wind_gusts_10m[fI]:null);
+      data.windDir.push(fI!=null? f.hourly.wind_direction_10m[fI]:null);
+      data.rain.push(fI!=null? f.hourly.precipitation[fI]:null);
+      data.wave.push(mI!=null? m.hourly.wave_height[mI]:null);
+      data.waveP.push(mI!=null? m.hourly.wave_period[mI]:null);
+      data.waveD.push(mI!=null? m.hourly.wave_direction[mI]:null);
+      data.tide.push(tI!=null? t.hourly.tide_height[tI]:null);
+    });
+
+    return data;
   } catch (err) {
     console.warn("Falling back:", err);
     return offlineData();
   }
 }
 
-/* ---------- NIWA Tides ---------- */
-async function fetchTidePredictionsNIWA() {
-  try {
-    const url = `https://api.niwa.co.nz/tides/data?lat=${LAT}&long=${LON}`;
-    const resp = await fetch(url, { headers: { "x-apikey": NIWA_KEY } });
-    if (!resp.ok) throw new Error("NIWA request failed: " + resp.status);
-    const data = await resp.json();
-    console.log("NIWA Tide Data (raw):", data);
-    const rows =
-      (Array.isArray(data.predictions) && data.predictions) ||
-      (Array.isArray(data.values) && data.values) ||
-      (Array.isArray(data.data) && data.data) || [];
-    const norm = rows.map(p => {
-      const time = p.time || p.dateTime || null;
-      const height = p.height ?? p.value ?? null;
-      const raw = (p.type ?? p.event ?? "").toString().toLowerCase();
-      let type = raw.includes("high") ? "HIGH" : raw.includes("low") ? "LOW" : null;
-      return (time && type) ? { time, height, type } : null;
-    }).filter(Boolean);
-    console.table(norm.slice(0,6));
-    return { highs: norm.filter(e=>e.type==="HIGH"), lows: norm.filter(e=>e.type==="LOW"), offline:false };
-  } catch (err) {
-    console.warn("NIWA tide fetch failed, falling back:", err);
-    return { highs:[], lows:[], offline:true };
-  }
-}
-
-/* ---------- Build Table ---------- */
+/* ---------- Build table ---------- */
 function buildTable(d) {
-  const tH = document.getElementById("thead"), tB = document.getElementById("tbody");
-  if (!tH || !tB) return;
-  tH.innerHTML = tB.innerHTML = "";
-  const hdr = document.createElement("tr");
-  hdr.innerHTML = "<th>Metric</th>" + d.labelHours.map(h => `<th>${h.toLocaleTimeString([], {hour:"2-digit"})}</th>`).join("");
-  tH.appendChild(hdr);
+  const thead = document.getElementById("thead");
+  const tbody = document.getElementById("tbody");
+  thead.innerHTML = tbody.innerHTML = "";
+
+  const trH = document.createElement("tr");
+  trH.innerHTML = "<th>Metric</th>" +
+    d.labelHours.map(h=>`<th${isNight(d,h)?' class="night"':''}>${h.toLocaleTimeString([], {hour:'2-digit'})}</th>`).join("");
+  thead.appendChild(trH);
+
   const rows = [
-    ["Wave (m)", d.wave, v => v?.toFixed(1) ?? "—"],
-    ["Period (s)", d.waveP, v => v?.toFixed(0) ?? "—"],
-    ["Wind (km/h)", d.wind, v => v?.toFixed(0) ?? "—"],
-    ["Gusts (km/h)", d.gusts, v => v?.toFixed(0) ?? "—"],
-    ["Direction", d.windDir, v => v!=null ? `${degToCompass(v)} <span style='transform:rotate(${v}deg)' class='dir-arrow'>➤</span>`:"—"],
-    ["Rain (mm/hr)", d.rain, v => v?.toFixed(1) ?? "—"],
-    ["Tide (m)", d.tide, v => v?.toFixed(2) ?? "—"]
+    ["Wave (m)", d.wave, v=>v?.toFixed(1)??"—"],
+    ["Period (s)", d.waveP, v=>v?.toFixed(0)??"—"],
+    ["Wind (km/h)", d.wind, v=>v?.toFixed(0)??"—"],
+    ["Gusts (km/h)", d.gusts, v=>v?.toFixed(0)??"—"],
+    ["Direction", d.windDir, v=> v!=null ? `${degToCompass(v)} <span style='transform:rotate(${v}deg)' class='dir-arrow'>➤</span>` : "—"],
+    ["Rain (mm/hr)", d.rain, v=>v?.toFixed(1)??"—"],
+    ["Tide (m)", d.tide, v=>v?.toFixed(2)??"—"]
   ];
-  rows.forEach(([n,a,f]) => {
-    const r = document.createElement("tr");
-    r.innerHTML = `<th>${n}</th>` + a.map(x => `<td>${f(x)}</td>`).join("");
-    tB.appendChild(r);
+
+  rows.forEach(([label, arr, fmt])=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML="<th>"+label+"</th>"+
+      arr.map((v,i)=>`<td${isNight(d,i)?' class="night"':''}>${fmt(v)}</td>`).join("");
+    tbody.appendChild(tr);
   });
-  const surf = d.labelHours.map((_,i)=>score(d.wave[i],d.wind[i],d.rain[i],d.windDir[i],d.waveP[i],d.tide[i]));
-  const sRow = document.createElement("tr");
-  sRow.innerHTML = "<th>Surfability (1–10)</th>" + surf.map(v => {
-    const c = v>=8?"good":v>=5?"fair":"poor";
-    return `<td class="scale-surf ${c}">${v.toFixed(1)}</td>`;
-  }).join("");
-  tB.appendChild(sRow);
-  const badge = document.getElementById("scoreBadge");
-  if (badge) { badge.textContent = `Surfability ${surf[0].toFixed(1)}`; badge.className = "chip score "+(surf[0]>=8?"good":surf[0]>=5?"fair":"poor"); }
+
+  const surf = d.labelHours.map((_,i)=>score(d.wave[i], d.wind[i], d.rain[i], d.windDir[i]));
+  const tr=document.createElement("tr");
+  tr.innerHTML="<th>Surfability (1–10)</th>"+
+    surf.map((v,i)=>{
+      const cls = v>=8?"good":v>=5?"fair":"poor";
+      return `<td class="scale-surf ${cls}${isNight(d,i)?' night':''}">${v.toFixed(1)}</td>`;
+    }).join("");
+  tbody.appendChild(tr);
+
+  const now = surf[0];
+  const badge=document.getElementById("scoreBadge");
+  badge.textContent=`Surfability ${now.toFixed(1)}`;
+  badge.className="chip score "+(now>=8?"good":now>=5?"": "poor");
 }
 
-/* ---------- Update Chips ---------- */
-function updateChips(d) {
-  const fmt = t => new Date(t).toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Pacific/Auckland"});
-  const sunChip=document.getElementById("sunChip");
-  if(sunChip&&d.sunrise&&d.sunset){sunChip.innerHTML=`🌅 ${fmt(d.sunrise)}  🌇 ${fmt(d.sunset)}`;}
-  const tideChip=document.getElementById("tideChip");
-  if(tideChip){
-    if(d.tideTimes && (d.tideTimes.highs?.length || d.tideTimes.lows?.length)){
-      const zone="Pacific/Auckland";
-      const events=[...(d.tideTimes.highs||[]).map(e=>({...e,kind:"HIGH"})),...(d.tideTimes.lows||[]).map(e=>({...e,kind:"LOW"}))].map(e=>({...e,local:new Date(e.time)})).sort((a,b)=>a.local-b.local);
-      const todayNZ=new Date().toLocaleDateString("en-NZ",{timeZone:zone});
-      const todays=events.filter(e=>e.local.toLocaleDateString("en-NZ",{timeZone:zone})===todayNZ);
-      const pool=todays.length?todays:events;
-      const highs=pool.filter(e=>e.kind==="HIGH").slice(0,2);
-      const lows=pool.filter(e=>e.kind==="LOW").slice(0,2);
-      const highStr=highs.map(e=>`${fmt(e.local)}${e.height?` (${(+e.height).toFixed(2)} m)`:``}`).join("  ");
-      const lowStr=lows.map(e=>`${fmt(e.local)}${e.height?` (${(+e.height).toFixed(2)} m)`:``}`).join("  ");
-      tideChip.innerHTML=`🌊 HIGH: ${highStr||"—"}  LOW: ${lowStr||"—"}`;
-    } else tideChip.innerHTML="🌊 Tide data unavailable";
+function isNight(d,h){
+  const hh = (h instanceof Date)? h : d.labelHours[h];
+  return hh<new Date(d.sunrise)||hh>=new Date(d.sunset);
+}
+
+/* ---------- Find all high/low tides ---------- */
+function findTideExtremes(tideHeights, hours) {
+  const highs=[], lows=[];
+  for (let i=1;i<tideHeights.length-1;i++){
+    const prev=tideHeights[i-1], curr=tideHeights[i], next=tideHeights[i+1];
+    if (curr>prev && curr>next) highs.push({time:hours[i],height:curr});
+    if (curr<prev && curr<next) lows.push({time:hours[i],height:curr});
   }
+  return { highs, lows };
 }
 
-/* ---------- Surfability ---------- */
-function score(wave,wind,rain,windDir,period,tide){
-  if(wave==null)return 0;let s=10;
-  s-=Math.abs(wave-1.2)*4;
-  if(period>7)s+=Math.min(3,(period-7)*0.5);
-  if(wind>15)s-=(wind-15)*0.2;
-  if(windDir!=null){if(windDir>=315||windDir<=45)s+=2;else if(windDir>=135&&windDir<=225)s-=2;}
-  if(rain>0.5)s-=1;
-  if(tide!=null&&(tide<0.6||tide>1.6))s-=1;
+/* ---------- Update chips ---------- */
+function updateChips(d) {
+  const sunChip=document.getElementById("sunChip");
+  if (sunChip){
+    sunChip.innerHTML=`🌅 ${new Date(d.sunrise).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}  `+
+                      `🌇 ${new Date(d.sunset).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})}`;
+  }
+
+  const tideChip=document.getElementById("tideChip");
+  if (tideChip && d.tide?.length){
+    const tides=findTideExtremes(d.tide,d.labelHours);
+    const highs=tides.highs.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
+    const lows=tides.lows.map(t=>t.time.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})).join(", ");
+    tideChip.innerHTML=`🌊 Highs: ${highs} | Lows: ${lows}`;
+  } else if (tideChip) tideChip.innerHTML="🌊 Tide data loading...";
+}
+
+/* ---------- Scoring ---------- */
+function score(wave,wind,rain,dir){
+  if(wave==null) return 0;
+  let s=10 - Math.abs(wave-1)*5;
+  s -= wind>20? (wind-20)/5 : 0;
+  if(rain>0.5) s-=2;
+  if(dir && (dir<200||dir>340)) s+=1;
   return Math.max(0,Math.min(10,s));
 }
 
-/* ---------- Refresh ---------- */
+/* ---------- Refresh cycle ---------- */
 async function refresh(){
+  const fallback=offlineData();
+  buildTable(fallback);
+  const sunTimes=await fetchSunTimes(LAT,LON);
+  fallback.sunrise=sunTimes.sunrise;
+  fallback.sunset=sunTimes.sunset;
+  updateChips(fallback);
   document.getElementById("dataStatus").textContent="⏳ loading...";
-  const offline=offlineData(); buildTable(offline);
-  const sun=await fetchSunTimes(LAT,LON);
-  offline.sunrise=sun.sunrise; offline.sunset=sun.sunset;
-  updateChips(offline);
   try{
-    const [marine,sun2,niwa]=await Promise.all([fetchData(),fetchSunTimes(LAT,LON),fetchTidePredictionsNIWA()]);
-    marine.sunrise=sun2.sunrise; marine.sunset=sun2.sunset; marine.tideTimes=niwa;
-    buildTable(marine); updateChips(marine);
-    document.getElementById("dataStatus").textContent=niwa.offline?"🌐 Live (no NIWA)":"🌐 Live";
-    document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Pacific/Auckland"});
-  }catch(err){
-    console.error("Refresh failed:",err);
+    const d=await fetchData();
+    const sun=await fetchSunTimes(LAT,LON);
+    d.sunrise=sun.sunrise; d.sunset=sun.sunset;
+    buildTable(d);
+    updateChips(d);
+    document.getElementById("dataStatus").textContent=d.offline?"📁 Offline":"🌐 Live";
+    document.getElementById("updatedAt").textContent=new Date().toLocaleTimeString();
+  }catch(e){
+    console.error("Refresh failed:",e);
     document.getElementById("dataStatus").textContent="❌ Error";
   }
 }
