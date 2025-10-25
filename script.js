@@ -297,3 +297,23 @@ async function refresh(){
     document.getElementById("dataStatus").textContent="❌ Error";
   }
 }
+
+
+/* ---------- About panel toggle ---------- */
+window.addEventListener("DOMContentLoaded", () => {
+  const aboutBtn = document.getElementById("aboutBtn");
+  const aboutPanel = document.getElementById("aboutPanel");
+  const closeAbout = document.getElementById("closeAbout");
+
+  if (aboutBtn && aboutPanel) {
+    aboutBtn.addEventListener("click", () => {
+      aboutPanel.classList.add("active");
+    });
+    closeAbout.addEventListener("click", () => {
+      aboutPanel.classList.remove("active");
+    });
+    aboutPanel.addEventListener("click", (e) => {
+      if (e.target === aboutPanel) aboutPanel.classList.remove("active");
+    });
+  }
+});
