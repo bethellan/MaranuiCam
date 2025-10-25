@@ -95,6 +95,7 @@ function findTideExtremes(tideHeights, hours, mergeWindowMin = 120) {
 
 
 /* ---------- Update chips (local 4-tide robust) ---------- */
+/* ---------- Update chips (local 4-tide robust) ---------- */
 function updateChips(d) {
   const fmt = t =>
     new Date(t).toLocaleTimeString("en-NZ", {
@@ -106,7 +107,7 @@ function updateChips(d) {
 
   // 🌅 Sunrise / Sunset
   const sunChip = document.getElementById("sunChip");
-  if (sunChip) {
+  if (sunChip && d.sunrise && d.sunset) {
     sunChip.innerHTML = `🌅 ${fmt(d.sunrise)}  🌇 ${fmt(d.sunset)}`;
   }
 
@@ -114,60 +115,49 @@ function updateChips(d) {
   const tideChip = document.getElementById("tideChip");
   if (tideChip && d.tide?.length) {
     const tides = findTideExtremes(d.tide, d.labelHours);
-    const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
 
-    // Combine & localize
-       // Make sure all times are parsed as UTC before converting to NZ local
-   // Sort, filter to today (NZ local), and pick up to 2 highs + 2 lows
-events.sort((a, b) => a.local - b.local);
+    // Combine and create unified event list
+    const events = [
+      ...tides.highs.map(t => ({ type: "HIGH", time: t.time, height: t.height })),
+      ...tides.lows.map(t => ({ type: "LOW", time: t.time, height: t.height }))
+    ].map(ev => {
+      const raw = typeof ev.time === "string" ? ev.time : ev.time.toISOString();
+      const local = new Date(raw); // already local when timezone=auto
+      return { ...ev, local };
+    });
 
-const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
-const todays = events.filter(ev =>
-  ev.local.toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" }) === todayLocal
-);
-
-const highsToday = todays.filter(e => e.type === "HIGH").slice(0, 2);
-const lowsToday  = todays.filter(e => e.type === "LOW").slice(0, 2);
-
-// If the API day-edge gives fewer than 2, backfill from nearest events
-function ensureTwo(arr, wantType) {
-  if (arr.length >= 2) return arr;
-  const extras = events.filter(e => e.type === wantType && !arr.includes(e));
-  return arr.concat(extras).slice(0, 2);
-}
-const highsShow = ensureTwo(highsToday, "HIGH");
-const lowsShow  = ensureTwo(lowsToday,  "LOW");
-
-const fmt = t => t.toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Pacific/Auckland" });
-const highStr = highsShow.map(e => fmt(e.local)).join("  ");
-const lowStr  = lowsShow .map(e => fmt(e.local)).join("  ");
-
-tideChip.innerHTML = `🌊 HIGH: ${highStr || "—"}  LOW: ${lowStr || "—"}`;
-
-
-
-    // Sort by local time
+    // Sort chronologically
     events.sort((a, b) => a.local - b.local);
 
-    // Keep only today's events (NZ local date)
-    const filtered = events.filter(
-      ev => ev.local.toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" }) === todayLocal
+    // Keep only today's events (NZ local)
+    const todayLocal = new Date().toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" });
+    const todays = events.filter(ev =>
+      ev.local.toLocaleDateString("en-NZ", { timeZone: "Pacific/Auckland" }) === todayLocal
     );
 
-    // If fewer than 4 events found, take closest 4 regardless
-    const show = (filtered.length ? filtered : events).slice(0, 4);
+    // Up to two highs and two lows
+    const highs = todays.filter(e => e.type === "HIGH").slice(0, 2);
+    const lows  = todays.filter(e => e.type === "LOW").slice(0, 2);
 
-    if (show.length) {
-      const highStr = show.filter(e => e.type === "HIGH").map(e => fmt(e.local)).join("  ");
-const lowStr  = show.filter(e => e.type === "LOW").map(e => fmt(e.local)).join("  ");
-tideChip.innerHTML = `🌊 HIGH: ${highStr || '—'}  LOW: ${lowStr || '—'}`;
-    } else {
-      tideChip.innerHTML = "🌊 Tide data unavailable";
+    // If not enough for today, fill from next available
+    function ensureTwo(arr, wantType) {
+      if (arr.length >= 2) return arr;
+      const extras = events.filter(e => e.type === wantType && !arr.includes(e));
+      return arr.concat(extras).slice(0, 2);
     }
+
+    const highsShow = ensureTwo(highs, "HIGH");
+    const lowsShow  = ensureTwo(lows,  "LOW");
+
+    // Render chip text
+    const highStr = highsShow.map(e => fmt(e.local)).join("  ");
+    const lowStr  = lowsShow.map(e => fmt(e.local)).join("  ");
+    tideChip.innerHTML = `🌊 HIGH: ${highStr || "—"}  LOW: ${lowStr || "—"}`;
   } else if (tideChip) {
     tideChip.innerHTML = "🌊 Tide data loading...";
   }
 }
+
 
 
 /* ---------- Scoring ---------- */
