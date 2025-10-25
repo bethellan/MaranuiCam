@@ -1,4 +1,4 @@
-// ===== v6.4.4 MaranuiCam — precise sunrise/sunset + full 24h tides =====
+// ===== v6.4.4 MaranuiCam — precise sunrise/sunset + full 24h tides (no popup) =====
 const LAT = -41.327, LON = 174.794;
 const SURF_EMBED = "https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
 const AIRPORT_EMBED = "https://www.youtube.com/embed/qEzB86yz_rM?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1";
@@ -8,7 +8,6 @@ const camToggle = document.getElementById("camToggle");
 let showingSurf = true;
 let youtubeAPIReady = false;
 let player;
-let overlayAdded = false;
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
@@ -38,18 +37,12 @@ function initPlayer() {
 
 function onPlayerReady(event) {
   tryPlay();
-  ['touchstart','click'].forEach(evt => {
-    document.addEventListener(evt, () => tryPlay(true), { once: true });
-  });
 }
 
 function tryPlay(fromGesture=false){
   if (!player || typeof player.playVideo !== 'function') return;
   try { player.mute && player.mute(); } catch(e){}
   setTimeout(() => { try { player.playVideo(); } catch(e){} }, fromGesture ? 0 : 300);
-  setTimeout(() => {
-    if (isIOS && !overlayAdded && !isPlaying()) addIOSOverlay();
-  }, 3000);
 }
 
 function isPlaying(){
@@ -58,26 +51,9 @@ function isPlaying(){
 }
 
 function onPlayerStateChange(event) {
-  if (event.data === YT.PlayerState.PLAYING) {
-    const overlay = document.querySelector('.ios-play-overlay');
-    if (overlay) overlay.remove();
-    overlayAdded = false;
-  } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+  if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
     setTimeout(() => { try { player.playVideo(); } catch(e){} }, 800);
   }
-}
-
-function addIOSOverlay() {
-  const cam = document.querySelector('.cam');
-  if (!cam || overlayAdded) return;
-  const overlay = document.createElement('div');
-  overlay.className = 'ios-play-overlay';
-  overlay.textContent = '▶ Tap to Play Video';
-  overlay.addEventListener('click', () => {
-    tryPlay(true);
-  });
-  cam.appendChild(overlay);
-  overlayAdded = true;
 }
 
 // Camera toggle
