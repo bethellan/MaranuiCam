@@ -155,33 +155,31 @@ function validateDataset(data){
 
 /* ===== Enhanced Data Fetching with Better Sources ===== */
 async function fetchEnhancedData(offsetDays = 0) {
-  const base = getBaseDate(offsetDays);
+  const base = getBaseDate(offsetDays);                // ← base for the chosen day
   const start = base.toISOString().split("T")[0];
-  const end = new Date(base.getTime() + 24 * 3600 * 1000).toISOString().split("T")[0];
+  const end = new Date(base.getTime() + 24*3600*1000).toISOString().split("T")[0];
 
   try {
-    // Try multiple data sources for better accuracy
     const [openMeteoData, worldTidesData] = await Promise.allSettled([
-      fetchOpenMeteoData(start, end),
-      fetchWorldTidesData(base)
+      fetchOpenMeteoData(start, end, base),            // ← pass base
+      fetchWorldTidesData(base)                        // already uses base
     ]);
 
-    const primaryData = openMeteoData.value || generateFallbackData(base);
+    const primaryData = openMeteoData.value || generateFallbackData(base);   // ← base, not today
     const enhancedTides = worldTidesData.value || { tideData: primaryData.tide, tidesDaily: primaryData.tidesDaily };
 
-    // Use enhanced tide data if available
     if (worldTidesData.value) {
       primaryData.tide = enhancedTides.tideData;
       primaryData.tidesDaily = enhancedTides.tidesDaily;
     }
 
     return validateDataset(primaryData);
-
   } catch (err) {
     console.warn("Enhanced fetch failed, using fallback:", err);
-    return generateFallbackData(base);
+    return generateFallbackData(base);                 // ← base, not today
   }
 }
+
 
 // ===== Enhanced Tide Visualization =====
 function createTideChart(tideData, hours, highs, lows) {
@@ -425,8 +423,7 @@ async function fetchWorldTidesData(baseDate) {
   return null;
 }
 
-async function fetchOpenMeteoData(start, end) {
-  // Your existing Open-Meteo implementation
+async function fetchOpenMeteoData(start, end, baseDate) {
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
     `&hourly=temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,rain,showers` +
     `&daily=sunrise,sunset&timezone=Pacific/Auckland&start_date=${start}&end_date=${end}&windspeed_unit=kmh`;
@@ -435,89 +432,79 @@ async function fetchOpenMeteoData(start, end) {
     `&hourly=wave_height,wave_period,wave_direction,sea_surface_temperature` +
     `&timezone=Pacific/Auckland&start_date=${start}&end_date=${end}`;
 
-  const [forecastRes, marineRes] = await Promise.allSettled([
-    fetch(forecastUrl),
-    fetch(marineUrl)
-  ]);
+  const [forecastRes, marineRes] = await Promise.allSettled([ fetch(forecastUrl), fetch(marineUrl) ]);
 
   const forecastData = forecastRes.value?.ok ? await forecastRes.value.json() : null;
-  const marineData = marineRes.value?.ok ? await marineRes.value.json() : null;
+  const marineData   = marineRes.value?.ok ? await marineRes.value.json()   : null;
 
-  const base = getBaseDate(0); // You need to calculate the correct base date based on the start parameter
-  const hours = Array.from({ length: 24 }, (_, i) => new Date(base.getTime() + i * 3600 * 1000));
-  // Create data structure with fallbacks
-  
+  // Use the selected day as our base
+  const base = new Date(baseDate ?? getBaseDate(0));
+  base.setHours(0,0,0,0);
+
+  const hours = Array.from({ length: 24 }, (_, i) => new Date(base.getTime() + i*3600*1000));
+
   const data = {
     labelHours: hours,
     temp: [], feelsLike: [], humidity: [], pressure: [],
     wind: [], gusts: [], windDir: [], rain: [],
     wave: [], waveP: [], waveD: [], tide: [], waterTemp: [],
-    sunrise: forecastData?.daily?.sunrise ? new Date(forecastData.daily.sunrise[0]) : new Date(getBaseDate(0).setHours(7)),
-    sunset: forecastData?.daily?.sunset ? new Date(forecastData.daily.sunset[0]) : new Date(getBaseDate(0).setHours(19)),
+    sunrise: forecastData?.daily?.sunrise?.[0] ? new Date(forecastData.daily.sunrise[0]) : new Date(new Date(base).setHours(7,0,0,0)),
+    sunset:  forecastData?.daily?.sunset?.[0]  ? new Date(forecastData.daily.sunset[0])  : new Date(new Date(base).setHours(19,0,0,0)),
     tidesDaily: { highs: [], lows: [] },
     offline: !forecastData && !marineData
   };
 
-  // Map hourly data (same as your original logic)
   hours.forEach((hour, i) => {
     const hourKey = toLocalHourKey(hour);
-    
-    // Forecast data mapping
+
     if (forecastData?.hourly?.time) {
       const hourIndex = forecastData.hourly.time.findIndex(t => t === hourKey);
       if (hourIndex !== -1) {
-        data.temp[i] = forecastData.hourly.temperature_2m?.[hourIndex] ?? null;
-        data.feelsLike[i] = data.temp[i] ? data.temp[i] - 1 + (Math.random() * 2 - 1) : null;
-        data.humidity[i] = forecastData.hourly.relative_humidity_2m?.[hourIndex] ?? null;
-        data.pressure[i] = forecastData.hourly.pressure_msl?.[hourIndex] ?? null;
-        data.wind[i] = forecastData.hourly.wind_speed_10m?.[hourIndex] ?? null;
-        data.gusts[i] = forecastData.hourly.wind_gusts_10m?.[hourIndex] ?? null;
-        data.windDir[i] = forecastData.hourly.wind_direction_10m?.[hourIndex] ?? null;
-        
-        // Rain from multiple sources
-        data.rain[i] = forecastData.hourly.rain?.[hourIndex] ?? 
-                       forecastData.hourly.showers?.[hourIndex] ?? 
-                       forecastData.hourly.precipitation?.[hourIndex] ?? 0;
+        data.temp[i]      = forecastData.hourly.temperature_2m?.[hourIndex] ?? null;
+        data.feelsLike[i] = data.temp[i] ? data.temp[i] - 1 + (Math.random()*2 - 1) : null;
+        data.humidity[i]  = forecastData.hourly.relative_humidity_2m?.[hourIndex] ?? null;
+        data.pressure[i]  = forecastData.hourly.pressure_msl?.[hourIndex] ?? null;
+        data.wind[i]      = forecastData.hourly.wind_speed_10m?.[hourIndex] ?? null;
+        data.gusts[i]     = forecastData.hourly.wind_gusts_10m?.[hourIndex] ?? null;
+        data.windDir[i]   = forecastData.hourly.wind_direction_10m?.[hourIndex] ?? null;
+        data.rain[i]      = forecastData.hourly.rain?.[hourIndex]
+                         ?? forecastData.hourly.showers?.[hourIndex]
+                         ?? forecastData.hourly.precipitation?.[hourIndex] ?? 0;
       }
     }
-    
-    // Marine data mapping
+
     if (marineData?.hourly?.time) {
       const marineIndex = marineData.hourly.time.findIndex(t => t === hourKey);
       if (marineIndex !== -1) {
-        data.wave[i] = marineData.hourly.wave_height?.[marineIndex] ?? null;
-        data.waveP[i] = marineData.hourly.wave_period?.[marineIndex] ?? null;
-        data.waveD[i] = marineData.hourly.wave_direction?.[marineIndex] ?? null;
+        data.wave[i]      = marineData.hourly.wave_height?.[marineIndex] ?? null;
+        data.waveP[i]     = marineData.hourly.wave_period?.[marineIndex] ?? null;
+        data.waveD[i]     = marineData.hourly.wave_direction?.[marineIndex] ?? null;
         data.waterTemp[i] = marineData.hourly.sea_surface_temperature?.[marineIndex] ?? null;
       }
     }
-    
-    // Fallbacks for missing data
-    if (data.temp[i] == null) data.temp[i] = 15 + Math.sin(i * 0.26) * 3 + (Math.random() * 2 - 1);
-    if (data.feelsLike[i] == null) data.feelsLike[i] = (data.temp[i] || 15) - 1 + (Math.random() * 2 - 1);
-    if (data.humidity[i] == null) data.humidity[i] = 70 + Math.sin(i * 0.3) * 15 + (Math.random() * 10 - 5);
-    if (data.pressure[i] == null) data.pressure[i] = 1013 + Math.sin(i * 0.2) * 5 + (Math.random() * 2 - 1);
-    if (data.wind[i] == null) data.wind[i] = 8 + Math.sin(i * 0.4) * 10 + (Math.random() * 4 - 2);
-    if (data.gusts[i] == null) data.gusts[i] = (data.wind[i] || 10) + 5 + (Math.random() * 4 - 2);
-    if (data.windDir[i] == null) data.windDir[i] = Math.floor(Math.random() * 360);
-    if (data.rain[i] == null) data.rain[i] = Math.random() < 0.2 ? +(Math.random() * 1.5).toFixed(1) : 0;
-    if (data.wave[i] == null) data.wave[i] = 0.8 + Math.sin(i * 0.26) * 0.4 + (Math.random() * 0.3 - 0.15);
-    if (data.waveP[i] == null) data.waveP[i] = 7 + Math.sin(i * 0.2) * 2 + (Math.random() * 1 - 0.5);
-    if (data.waveD[i] == null) data.waveD[i] = 180 + (Math.random() * 60 - 30);
-    if (data.waterTemp[i] == null) data.waterTemp[i] = 14 + Math.sin(i * 0.1) * 0.5 + (Math.random() * 0.5 - 0.25);
-    
-    // NO tide calculation here - it's done after the loop
+
+    // same fallbacks as you had...
+    if (data.temp[i] == null)      data.temp[i]      = 15 + Math.sin(i*0.26)*3 + (Math.random()*2 - 1);
+    if (data.feelsLike[i] == null) data.feelsLike[i] = (data.temp[i] || 15) - 1 + (Math.random()*2 - 1);
+    if (data.humidity[i] == null)  data.humidity[i]  = 70 + Math.sin(i*0.3)*15 + (Math.random()*10 - 5);
+    if (data.pressure[i] == null)  data.pressure[i]  = 1013 + Math.sin(i*0.2)*5 + (Math.random()*2 - 1);
+    if (data.wind[i] == null)      data.wind[i]      = 8 + Math.sin(i*0.4)*10 + (Math.random()*4 - 2);
+    if (data.gusts[i] == null)     data.gusts[i]     = (data.wind[i] || 10) + 5 + (Math.random()*4 - 2);
+    if (data.windDir[i] == null)   data.windDir[i]   = Math.floor(Math.random()*360);
+    if (data.rain[i] == null)      data.rain[i]      = Math.random() < 0.2 ? +(Math.random()*1.5).toFixed(1) : 0;
+    if (data.wave[i] == null)      data.wave[i]      = 0.8 + Math.sin(i*0.26)*0.4 + (Math.random()*0.3 - 0.15);
+    if (data.waveP[i] == null)     data.waveP[i]     = 7 + Math.sin(i*0.2)*2 + (Math.random()*1 - 0.5);
+    if (data.waveD[i] == null)     data.waveD[i]     = 180 + (Math.random()*60 - 30);
+    if (data.waterTemp[i] == null) data.waterTemp[i] = 14 + Math.sin(i*0.1)*0.5 + (Math.random()*0.5 - 0.25);
   });
 
-  // Calculate realistic tides using the new function
+  // build tides for this day's hours
   data.tide = calculateRealisticTides(hours);
-
-  // Calculate tide highs/lows
-  const tideExtremes = findTideExtremes(data.tide, hours);
-  data.tidesDaily = tideExtremes;
+  data.tidesDaily = findTideExtremes(data.tide, hours);
 
   return data;
 }
+
 
 
 
@@ -777,33 +764,14 @@ async function refresh(){
   const updatedAt = document.getElementById("updatedAt");
   status.textContent = "⏳ Loading…";
   try{
+    const base = getBaseDate(dayOffset);                     // ← selected day
     const d = await fetchEnhancedData(dayOffset);
-    const sun = await fetchSunTimes(LAT, LON);
+    const sun = await fetchSunTimes(LAT, LON, base);         // ← pass base
     d.sunrise = sun.sunrise; d.sunset = sun.sunset;
-    buildEnhancedTable(d);  // ← CHANGED
+    buildEnhancedTable(d);
     updateChips(d);
-    
-    const realMarineHours = d.wave.filter(v => v != null && !d.offline).length;
-    if (d.offline) {
-      status.textContent = "📁 Offline";
-    } else if (realMarineHours === 0) {
-      status.textContent = "🌐 Live (simulated waves)";
-    } else {
-      status.textContent = "🌐 Live (real waves)";
-    }
-    
-    updatedAt.textContent = new Date().toLocaleTimeString();
-  }catch(e){
-    console.error("Refresh failed:",e);
-    const d = generateFallbackData(getBaseDate(dayOffset));
-    const sun = await fetchSunTimes(LAT, LON);
-    d.sunrise = sun.sunrise; d.sunset = sun.sunset;
-    buildEnhancedTable(d);  // ← CHANGED
-    updateChips(d);
-    status.textContent = "📁 Offline";
-    updatedAt.textContent = new Date().toLocaleTimeString();
-  }
-}
+    // ...rest unchanged
+
 
 /* ===== Day navigation ===== */
 window.addEventListener("DOMContentLoaded", () => {
@@ -816,20 +784,24 @@ window.addEventListener("DOMContentLoaded", () => {
     next.disabled = (dayOffset >=  MAX_FUTURE_DAYS);
   }
 
-  async function loadDay() {
-    status.textContent = "⏳ Loading…";
-    prev.disabled = next.disabled = true;
-    updateDayTitle();
-    try {
-     const d = await fetchEnhancedData(dayOffset);
-     buildEnhancedTable(d);  // ← CHANGED TO THIS
+ async function loadDay() {
+  status.textContent = "⏳ Loading…";
+  prev.disabled = next.disabled = true;
+  updateDayTitle();
+  try {
+    const base = getBaseDate(dayOffset);                     // ← selected day
+    const d = await fetchEnhancedData(dayOffset);
+    const sun = await fetchSunTimes(LAT, LON, base);         // ← pass base
+    d.sunrise = sun.sunrise; d.sunset = sun.sunset;
 
-      updateChips(d);
-      status.textContent = d.offline ? "📁 Offline" : "🌐 Live";
-    } finally {
-      updateNavState();
-    }
+    buildEnhancedTable(d);                                   // rebuild table + chart
+    updateChips(d);
+    status.textContent = d.offline ? "📁 Offline" : "🌐 Live";
+  } finally {
+    updateNavState();
   }
+}
+
 
   if (prev && next) {
     prev.addEventListener("click", () => { dayOffset--; loadDay(); });
@@ -883,4 +855,17 @@ async function fetchSunTimes(lat, lon) {
     }
   } catch (e) { console.warn("Sunrise-Sunset fetch failed:", e); }
   return { sunrise: new Date().setHours(7,0,0,0), sunset: new Date().setHours(19,0,0,0) };
+}async function fetchSunTimes(lat, lon, baseDate) {
+  const dateStr = baseDate ? baseDate.toISOString().split("T")[0] : null;
+  try {
+    const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0${dateStr ? `&date=${dateStr}` : ""}`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (json.status === "OK") {
+      return { sunrise: new Date(json.results.sunrise), sunset: new Date(json.results.sunset) };
+    }
+  } catch(e) { console.warn("Sunrise-Sunset fetch failed:", e); }
+  const base = baseDate ?? new Date();
+  return { sunrise: new Date(base.setHours(7,0,0,0)), sunset: new Date(base.setHours(19,0,0,0)) };
 }
+
