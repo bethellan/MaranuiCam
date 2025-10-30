@@ -762,30 +762,43 @@ function updateChips(d) {
   }
 }
 
-async function refresh(){
+async function refresh(){async function refresh(){
   const status = document.getElementById("dataStatus");
   const updatedAt = document.getElementById("updatedAt");
   status.textContent = "⏳ Loading…";
-  try{
-    const base = getBaseDate(dayOffset);                     // ← selected day
+
+  const base = getBaseDate(dayOffset); // selected day
+
+  try {
     const d = await fetchEnhancedData(dayOffset);
-    const sun = await fetchSunTimes(LAT, LON, base);         // ← pass base
+    const sun = await fetchSunTimes(LAT, LON, base);
     d.sunrise = sun.sunrise; d.sunset = sun.sunset;
+
     buildEnhancedTable(d);
     updateChips(d);
-    // ...rest unchanged
 
+    const realMarineHours = d.wave.filter(v => v != null && !d.offline).length;
+    if (d.offline) {
+      status.textContent = "📁 Offline";
+    } else if (realMarineHours === 0) {
+      status.textContent = "🌐 Live (simulated waves)";
+    } else {
+      status.textContent = "🌐 Live (real waves)";
+    }
+  } catch (e) {
+    console.error("Refresh failed:", e);
+    const d = generateFallbackData(base);
+    const sun = await fetchSunTimes(LAT, LON, base);
+    d.sunrise = sun.sunrise; d.sunset = sun.sunset;
 
-/* ===== Day navigation ===== */
-window.addEventListener("DOMContentLoaded", () => {
-  const prev = document.getElementById("prevDay");
-  const next = document.getElementById("nextDay");
-  const status = document.getElementById("dataStatus");
-
-  function updateNavState() {
-    prev.disabled = (dayOffset <= -MAX_PAST_DAYS);
-    next.disabled = (dayOffset >=  MAX_FUTURE_DAYS);
+    buildEnhancedTable(d);
+    updateChips(d);
+    status.textContent = "📁 Offline";
+  } finally {
+    if (updatedAt) updatedAt.textContent = new Date().toLocaleTimeString();
   }
+}
+
 
  async function loadDay() {
   status.textContent = "⏳ Loading…";
@@ -848,17 +861,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-/* ===== Sunrise/Sunset ===== */
-async function fetchSunTimes(lat, lon) {
-  try {
-    const resp = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
-    const json = await resp.json();
-    if (json.status === "OK") {
-      return { sunrise: new Date(json.results.sunrise), sunset: new Date(json.results.sunset) };
-    }
-  } catch (e) { console.warn("Sunrise-Sunset fetch failed:", e); }
-  return { sunrise: new Date().setHours(7,0,0,0), sunset: new Date().setHours(19,0,0,0) };
-}async function fetchSunTimes(lat, lon, baseDate) {
+
+async function fetchSunTimes(lat, lon, baseDate) {
   const dateStr = baseDate ? baseDate.toISOString().split("T")[0] : null;
   try {
     const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0${dateStr ? `&date=${dateStr}` : ""}`;
