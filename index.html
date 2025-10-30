@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maranui Webcam v6.4.10 – Surf & Airport Cams</title>
+  <meta name="theme-color" content="#e63946" />
+  <link rel="stylesheet" href="style.css?v=6.4.4" />
+  <script defer src="script.js?v=6.4.10"></script>
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <div class="logo-row">
+      <img src="assets/maranui-wing-band.png" alt="Maranui wings" class="header-logo" />
+      <h1 class="site-title">Maranui Surf Life Saving Club — Live Cams & Conditions</h1>
+    </div>
+  </header>
+
+  <main class="content" role="main">
+    <!-- Camera -->
+    <section class="camera-section" aria-label="Live camera">
+      <div class="cam">
+        <div class="overlay top" aria-hidden="true"></div>
+
+        <iframe
+          id="liveFrame"
+          title="Lyall Bay Live Surf Camera"
+          src="https://www.youtube.com/embed/c6uv1mWhWek?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowfullscreen
+          playsinline
+          frameborder="0">
+        </iframe>
+
+        <div class="overlay bottom" aria-hidden="true"></div>
+      </div>
+
+      <!-- Gradient Surf ⇄ Airport toggle -->
+      <div class="switch-row">
+        <button id="camToggle"
+          class="toggle toggle--surf"
+          type="button"
+          aria-label="Click to switch camera"
+          title="Click to switch camera"
+          aria-pressed="true">
+          <span class="toggle__left">🏖️ Surf Cam</span>
+          <span class="toggle__divider">⇄</span>
+          <span class="toggle__right">✈️ Airport Cam</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Summary chips -->
+    <section class="summary" aria-label="Today’s summary">
+      <div class="summary-row">
+        <div id="sunChip" class="chip sun"></div>
+        <div id="tideChip" class="chip tide"></div>
+        <div class="chip score" id="scoreBadge" aria-live="polite">Surfability —</div>
+        <div class="chip faint" id="dateLabel">—</div>
+      </div>
+    </section>
+
+    <!-- 24h Conditions Table -->
+    <section class="conditions" aria-label="24-hour forecast">
+      <!-- Day navigation and heading -->
+      <div class="day-nav">
+        <button id="prevDay" class="nav-btn">← Previous Day</button>
+        <h2 class="panel-title" id="dayTitle">24-Hour Forecast — Lyall Bay (Today)</h2>
+        <button id="nextDay" class="nav-btn">Next Day →</button>
+      </div>
+
+      <div class="table-scroll" role="region" aria-live="polite">
+        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="status-row">
+        <span id="dataStatus" class="status-chip">—</span>
+        <span id="updatedAt" class="status-chip faint" aria-live="polite">—</span>
+      </div>
+      <p id="tableHelp" class="panel-note">
+        Columns are hours (00–23). Rows show wave height, period, wind, gusts, direction, rain, tide height, and surfability.
+        Night hours are shaded. Auto-refresh every 30 minutes.
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>
+      Maranui Webcam <strong>v6.4.10</strong> © Maranui Surf Life Saving Club ·
+      Data from Open-Meteo (30 min refresh)
+    </p>
+  </footer>
+
+  <!-- Service Worker: unregister old, register new -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.getRegistrations()
+        .then(rs => rs.forEach(r => r.unregister()))
+        .finally(() => navigator.serviceWorker.register('sw.js?v=6.4.10').catch(console.warn));
+    });
+  }
+  </script>
+
+ 
+   <!-- About Info Panel -->
+  <button id="aboutBtn" class="about-btn">ℹ️ About Data</button>
+  <div id="aboutPanel" class="about-panel">
+    <div class="about-content">
+      <h3>About Maranui Webcam & Forecast</h3>
+      
+      <p><strong>This application provides live camera views and detailed surf conditions for Lyall Bay, Wellington.</strong> It combines real-time webcams with comprehensive weather and marine forecasts to help surfers and beachgoers plan their visits.</p>
+
+      <h4>Sunrise & Sunset Times</h4>
+      <p>Sunrise and sunset times are fetched from <strong>Sunrise-Sunset.org API</strong> using Wellington's coordinates. These times are used to shade night hours in the forecast table with a dark blue background.</p>
+
+      <h4>24-Hour Forecast Table</h4>
+      <p>The table shows hourly predictions for the next 24 hours. You can navigate between days using the Previous Day/Next Day buttons (up to 7 days in either direction).</p>
+      
+      <p><strong>Table Features:</strong></p>
+      <ul>
+        <li><strong>Current hour highlight:</strong> Today's current hour is marked with a <span style="color:#e63946;">red vertical bar</span> and "Now" label</li>
+        <li><strong>Night shading:</strong> Hours between sunset and sunrise are shaded dark blue</li>
+        <li><strong>Data sources:</strong> All forecast data comes from Open-Meteo APIs</li>
+      </ul>
+
+      <h4>Forecast Rows Explained</h4>
+      <ul>
+        <li><strong>Wave (m):</strong> Wave height in meters - from Open-Meteo Marine API</li>
+        <li><strong>Period (s):</strong> Time between waves in seconds - from Open-Meteo Marine API</li>
+        <li><strong>Wind (km/h):</strong> Wind speed with color coding:
+          <span class="wind calm" style="display:inline-block; min-width:2.2em; padding:1px 4px; margin:0 2px;">0-5</span>
+          <span class="wind light" style="display:inline-block; min-width:2.2em; padding:1px 4px; margin:0 2px;">6-15</span>
+          <span class="wind moderate" style="display:inline-block; min-width:2.2em; padding:1px 4px; margin:0 2px;">16-25</span>
+          <span class="wind strong" style="display:inline-block; min-width:2.2em; padding:1px 4px; margin:0 2px;">26-35</span>
+          <span class="wind very-strong" style="display:inline-block; min-width:2.2em; padding:1px 4px; margin:0 2px;">35+</span>
+        </li>
+        <li><strong>Gusts (km/h):</strong> Maximum wind gusts - same color coding as wind</li>
+        <li><strong>Direction:</strong> Wind direction with compass arrow - from Open-Meteo Forecast API</li>
+        <li><strong>Rain (mm/hr):</strong> Precipitation intensity - from Open-Meteo Forecast API</li>
+        <li><strong>Tide (m):</strong> Tide height relative to mean sea level - from Open-Meteo Marine API</li>
+      </ul>
+
+      <h4>Surfability Score (1-10)</h4>
+      <p>The surfability score is calculated using this algorithm:</p>
+      <ul>
+        <li><strong>Base score:</strong> Based on wave height (optimal around 0.6-1.5m)</li>
+        <li><strong>Wave period bonus:</strong> +1.0 for periods >11s, +0.5 for 8-11s, -1.0 for ≤5s</li>
+        <li><strong>Wind/wave alignment:</strong> +1.0 for offshore winds, -1.0 for onshore, -0.5 for cross-shore</li>
+        <li><strong>Wind penalty:</strong> -1 for every 5km/h over 15km/h, additional penalty over 25km/h</li>
+        <li><strong>Rain penalty:</strong> -1.5 for light rain, -2.5 for heavy rain</li>
+      </ul>
+      
+      <p><strong>Score colors:</strong></p>
+      <ul>
+        <li><span style="color:#2ecc71; font-weight:bold;">Green (8-10):</span> Excellent conditions</li>
+        <li><span style="color:#f39c12; font-weight:bold;">Orange (5-7.9):</span> Fair conditions</li>
+        <li><span style="color:#e74c3c; font-weight:bold;">Red (0-4.9):</span> Poor conditions</li>
+      </ul>
+
+      <h4>Data Updates & Availability</h4>
+      <p>Forecast data updates automatically every <strong>30 minutes</strong>. If live data is unavailable, the app uses realistic simulated data to ensure the table always displays. The status indicator shows whether you're viewing live data or simulated fallback data.</p>
+
+      <p><em>Data sources: Open-Meteo Forecast API, Open-Meteo Marine API, Sunrise-Sunset.org</em></p>
+
+      <button id="closeAbout" class="about-close">Close</button>
+    </div>
+  </div>
