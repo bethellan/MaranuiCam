@@ -316,32 +316,35 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
 
 // ===== Improved Tide Calculation =====
 function calculateRealisticTides(hours) {
-  // More realistic tide simulation for Wellington/Lyall Bay
-  // Wellington typically has 2 high and 2 low tides per day
-  const tides = [];
-  
-  // Base parameters for Wellington tides
-  const baseHeight = 0.8; // Base water level
-  const mainAmplitude = 0.6; // Main tidal component
-  const secondaryAmplitude = 0.3; // Secondary tidal component
-  
-  hours.forEach((hour, i) => {
-    const hourOfDay = hour.getHours() + hour.getMinutes() / 60;
-    
-    // Main semi-diurnal tide (2 highs, 2 lows per day)
-    const mainTide = mainAmplitude * Math.sin(hourOfDay * Math.PI / 12 - Math.PI/4);
-    
-    // Secondary component for asymmetry
-    const secondaryTide = secondaryAmplitude * Math.sin(hourOfDay * Math.PI / 6 + Math.PI/3);
-    
-    // Combine components
-    const tideHeight = baseHeight + mainTide + secondaryTide;
-    
-    tides.push(tideHeight);
+  if (!hours || !hours.length) return [];
+
+  // Choose a fixed epoch in NZ time (any past date is fine).
+  // DST won’t matter much for this simple model.
+  const epoch = new Date('2025-01-01T00:00:00+13:00').getTime();
+
+  const TWO_PI = Math.PI * 2;
+  const H12 = 12.42;         // M2 principal semidiurnal (hours)
+  const H6  = 6.21;          // M4 shallow-water overtide (hours)
+  const SYNODIC_H = 29.5306 * 24; // spring/neap cycle duration (hours)
+
+  const baseHeight = 0.9;    // mean level (m)
+  const mainAmp    = 0.60;   // M2 base amplitude (m)
+  const secAmp     = 0.25;   // M4 amplitude (m)
+
+  return hours.map(h => {
+    const th = (h.getTime() - epoch) / 3600000; // hours since epoch
+
+    // Spring/neap: 0.75x to 1.25x modulation of main amplitude
+    const spring = 1 + 0.25 * Math.cos(TWO_PI * (th / SYNODIC_H));
+
+    // Phase offsets add some asymmetry so highs aren’t perfectly symmetric
+    const m2 = (mainAmp * spring) * Math.sin(TWO_PI * (th / H12) - Math.PI / 4);
+    const m4 = secAmp * Math.sin(TWO_PI * (th / H6) + Math.PI / 6);
+
+    return baseHeight + m2 + m4;
   });
-  
-  return tides;
 }
+
 
 // ===== Better Tide Extremes Detection =====
 function findTideExtremes(tideData, hours) {
