@@ -650,21 +650,22 @@ function buildTable(d) {
 }
 
 // ===== Enhanced Table Builder with Tide Chart =====
+// ===== Enhanced Table Builder with Tide Chart =====
 function buildEnhancedTable(d) {
-  // Call original function
+  // Call original function to build the main table
   buildTable(d);
   
-  // Add tide chart after the table
-  const tableContainer = document.querySelector('.table-scroll');
+  // Remove existing tide chart if present
   const existingChart = document.querySelector('.tide-chart');
-  
-  // Remove existing chart if present
   if (existingChart) {
     existingChart.remove();
   }
   
   // Create and insert new tide chart
   const tideChart = createTideChart(d.tide, d.labelHours, d.tidesDaily.highs, d.tidesDaily.lows);
+  
+  // Insert the tide chart right after the table
+  const tableContainer = document.querySelector('.table-scroll');
   tableContainer.parentNode.insertBefore(tideChart, tableContainer.nextSibling);
 }
 /* ===== Enhanced scoring with temperature factors ===== */
@@ -762,7 +763,7 @@ async function refresh(){
     const d = await fetchEnhancedData(dayOffset);
     const sun = await fetchSunTimes(LAT, LON);
     d.sunrise = sun.sunrise; d.sunset = sun.sunset;
-    buildEnhancedTable(d);
+    buildEnhancedTable(d);  // ← CHANGED
     updateChips(d);
     
     const realMarineHours = d.wave.filter(v => v != null && !d.offline).length;
@@ -780,7 +781,7 @@ async function refresh(){
     const d = generateFallbackData(getBaseDate(dayOffset));
     const sun = await fetchSunTimes(LAT, LON);
     d.sunrise = sun.sunrise; d.sunset = sun.sunset;
-   buildEnhancedTable(d);
+    buildEnhancedTable(d);  // ← CHANGED
     updateChips(d);
     status.textContent = "📁 Offline";
     updatedAt.textContent = new Date().toLocaleTimeString();
@@ -804,7 +805,8 @@ window.addEventListener("DOMContentLoaded", () => {
     updateDayTitle();
     try {
      const d = await fetchEnhancedData(dayOffset);
-      buildEnhancedTable(d);
+     buildEnhancedTable(d);  // ← CHANGED TO THIS
+
       updateChips(d);
       status.textContent = d.offline ? "📁 Offline" : "🌐 Live";
     } finally {
