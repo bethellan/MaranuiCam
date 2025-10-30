@@ -65,15 +65,34 @@ function switchCam() {
 }
 camToggle?.addEventListener("click", switchCam);
 
-window.addEventListener("load", () => {
-  loadYouTubeAPI();
-  document.getElementById("dateLabel").textContent =
-    new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
-  updateDayTitle();
-  updateToggleButton();
-  refresh(); // live-first draw
-  setInterval(refresh, 30*60*1000);
+/* ===== Day navigation ===== */
+window.addEventListener("DOMContentLoaded", () => {
+  const prev = document.getElementById("prevDay");
+  const next = document.getElementById("nextDay");
+  const status = document.getElementById("dataStatus");
+
+  function updateNavState() {
+    prev.disabled = (dayOffset <= -MAX_PAST_DAYS);
+    next.disabled = (dayOffset >=  MAX_FUTURE_DAYS);
+  }
+
+  async function loadDay() {
+    status.textContent = "⏳ Loading…";
+    prev.disabled = next.disabled = true;
+    updateDayTitle();
+    await refresh();               // rebuild table + chart + chips
+    updateNavState();
+  }
+
+  if (prev && next) {
+    prev.addEventListener("click", () => { dayOffset--; loadDay(); });
+    next.addEventListener("click", () => { dayOffset++; loadDay(); });
+    updateNavState();
+  }
 });
+
+                       
+                       );
 
 /* ===== Day handling ===== */
 let dayOffset = 0; // 0 = today, -1 = yesterday, +1 = tomorrow
@@ -192,7 +211,7 @@ function createTideChart(tideData, hours, highs, lows) {
     border-radius: 12px;
     border: 1px solid #4fc3f7;
     position: relative;
-    height: 180px; // Increased from 120px to make it taller
+    height: 180px;
   `;
 
   // Create canvas for tide curve
@@ -762,7 +781,8 @@ function updateChips(d) {
   }
 }
 
-async function refresh(){async function refresh(){
+/* ===== Refresh (single, complete) ===== */
+async function refresh(){
   const status = document.getElementById("dataStatus");
   const updatedAt = document.getElementById("updatedAt");
   status.textContent = "⏳ Loading…";
@@ -795,9 +815,11 @@ async function refresh(){async function refresh(){
     updateChips(d);
     status.textContent = "📁 Offline";
   } finally {
+    const updatedAt = document.getElementById("updatedAt");
     if (updatedAt) updatedAt.textContent = new Date().toLocaleTimeString();
   }
 }
+
 
 
  async function loadDay() {
