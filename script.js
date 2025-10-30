@@ -212,6 +212,17 @@ function createTideChart(tideData, hours, highs, lows) {
 }
 
 function drawTideCurve(canvas, tideData, hours, highs, lows) {
+    // Force canvas redraw by clearing and resetting
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Set canvas dimensions again to force refresh
+  canvas.width = canvas.width;
+  
+  // ... rest of your existing drawTideCurve code continues here
+  const width = canvas.width;
+  const height = canvas.height;
+  const padding = 40;
   const ctx = canvas.getContext('2d');
   const width = canvas.width;
   const height = canvas.height;
@@ -650,24 +661,47 @@ function buildTable(d) {
 }
 
 // ===== Enhanced Table Builder with Tide Chart =====
-// ===== Enhanced Table Builder with Tide Chart =====
 function buildEnhancedTable(d) {
-  // Call original function to build the main table
+  console.log("Building enhanced table for day offset:", dayOffset);
+  debugTideData(d, dayOffset); // ADD THIS LINE
+  
+  // Remove ALL existing tide charts more aggressively
+  const existingCharts = document.querySelectorAll('.tide-chart');
+  existingCharts.forEach(chart => {
+    console.log("Removing existing tide chart");
+    chart.remove();
+  });
+
+  // Build the main table first
   buildTable(d);
   
-  // Remove existing tide chart if present
-  const existingChart = document.querySelector('.tide-chart');
-  if (existingChart) {
-    existingChart.remove();
-  }
-  
-  // Create and insert new tide chart
-  const tideChart = createTideChart(d.tide, d.labelHours, d.tidesDaily.highs, d.tidesDaily.lows);
-  
-  // Insert the tide chart right after the table
-  const tableContainer = document.querySelector('.table-scroll');
-  tableContainer.parentNode.insertBefore(tideChart, tableContainer.nextSibling);
+  // Wait a tiny bit for DOM to update, then add tide chart
+  setTimeout(() => {
+    // Create new tide chart
+    const tideChart = createTideChart(d.tide, d.labelHours, d.tidesDaily.highs, d.tidesDaily.lows);
+    
+    // Insert after the table container
+    const tableContainer = document.querySelector('.table-scroll');
+    const conditionsSection = document.querySelector('.conditions');
+    
+    if (tableContainer && tableContainer.parentNode) {
+      tableContainer.parentNode.insertBefore(tideChart, tableContainer.nextSibling);
+      console.log("Tide chart inserted successfully");
+    } else {
+      console.error("Could not find table container");
+    }
+  }, 10);
 }
+
+// Temporary debug function to check tide data
+function debugTideData(d, dayOffset) {
+  console.log(`=== Day ${dayOffset} Tide Data ===`);
+  console.log("First 5 tide values:", d.tide.slice(0, 5));
+  console.log("High tides:", d.tidesDaily.highs.map(h => `${fmtHM(h.time)} (${h.height.toFixed(2)}m)`));
+  console.log("Low tides:", d.tidesDaily.lows.map(l => `${fmtHM(l.time)} (${l.height.toFixed(2)}m)`));
+  console.log("======================");
+}
+
 /* ===== Enhanced scoring with temperature factors ===== */
 function score(wave, wind, rain, dir, wavePeriod, waveDirection, airTemp, waterTemp) {
   if (wave == null) return 0;
