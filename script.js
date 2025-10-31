@@ -24,8 +24,65 @@ let currentCam = 0;
 let frame, camToggle;
 let youtubeAPIReady = false, player;
 
+/* workers */
+
+const WORKER_URL = "https://niwa-tides.bethellan.workers.dev/niwa-tides";
+const nzTZ = "Pacific/Auckland";
+/* NEW: keep a handle to the tide chart canvas */
+let tideCanvas = null;
+let tideState = null;      // { tide, hours, highs, lows }
+let niwaEvents = [];       // last fetched NIWA H/L events
 /* ===== iOS sniff (kept for future) ===== */
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+
+/* date helper */
+function ymdNZ(d){
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: nzTZ, year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(d).reduce((o,p)=> (o[p.type]=p.value, o), {});
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+async function loadLocalTideMarkers(d, lat = LAT, lon = LON){
+  const hours = d.labelHours;
+  const daysNeeded = Math.ceil(hours.length / 24);
+
+  const q = new URLSearchParams({
+    lat:  lat.toFixed(3),
+    long: lon.toFixed(3),
+    startDate: ymdNZ(hours[0]),
+    days: String(daysNeeded),
+    interval: "10",
+    datum: "LAT"
+  });
+
+  const r = await fetch(`${WORKER_URL}?${q}`);
+  if (!r.ok){
+    console.error("NIWA proxy error", r.status);
+    return;
+  }
+
+  const { events } = await r.json(); // [{ time: ISO-UTC, kind: 'H'|'L', height }]
+  const localEvents = events.map(e => ({ time: new Date(e.time), kind: e.kind }));
+
+  // Remember for future redraws (resizes, tab changes)
+  niwaEvents = localEvents;
+
+  // Draw vertical H/L lines over the tide chart that’s already rendered
+  drawNiwaMarkersOnTideChart(localEvents, hours[0], hours[hours.length - 1]);
+
+  // Optional console check in NZ time
+  for (const ev of localEvents){
+    const tm = new Intl.DateTimeFormat("en-NZ", {
+      timeZone: nzTZ, hour: "2-digit", minute: "2-digit", hour12: false
+    }).format(ev.time);
+    console.debug(`[TIDE] ${ev.kind} @ ${tm} NZ`);
+  }
+}
+
+
+
 
 /* ===== Day handling ===== */
 let dayOffset = 0; // 0 = today, -1 = yesterday, +1 = tomorrow
@@ -101,6 +158,70 @@ function validateDataset(data){
   data.tide = densify(data.tide).map(v => clamp(v, -5, 5));
   data.waterTemp = densify(data.waterTemp).map(v => clamp(v, 0, 30));
   return data;
+}
+
+function sizeTideCanvasToTable(){
+  if (!tideCanvas) return;
+
+  const scroller = document.querySelector('.table-scroll');
+  if (!scroller) return;
+
+  const table = scroller.querySelector('table');
+  // Use the table’s full scroll width so the canvas columns align and scroll together
+  const totalWidth = table ? table.scrollWidth : scroller.clientWidth;
+
+  // Match canvas pixel size to content width
+  tideCanvas.width = totalWidth;
+  tideCanvas.style.width = totalWidth + 'px';
+
+  // Keep height consistent with createTideChart
+  tideCanvas.height = 160;
+  tideCanvas.style.height = '160px';
+
+  // Redraw the tide curve
+  if (tideState){
+    drawTideCurve(tideCanvas, tideState.tide, tideState.hours, tideState.highs, tideState.lows);
+  }
+
+  // Re-overlay NIWA H/L markers if we have them
+  if (niwaEvents.length && tideState && tideState.hours?.length){
+    const hours = tideState.hours;
+    drawNiwaMarkersOnTideChart(niwaEvents, hours[0], hours[hours.length - 1]);
+  }
+}
+
+function drawNiwaMarkersOnTideChart(events, startTime, endTime){
+  if (!tideCanvas) return;
+  const ctx = tideCanvas.getContext('2d');
+  const width = tideCanvas.width, height = tideCanvas.height;
+  const padding = 40; // must match drawTideCurve
+
+  const t0 = startTime.getTime();
+  const t1 = endTime.getTime();
+  const span = t1 - t0 || 1;
+
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(0,0,0,.45)';
+  ctx.fillStyle = 'rgba(0,0,0,.75)';
+  ctx.textAlign = 'center';
+  ctx.font = '10px system-ui';
+
+  for (const ev of events){
+    const te = ev.time.getTime();
+    if (te < t0 || te > t1) continue;
+    const frac = (te - t0) / span;
+    const x = padding + frac * (width - 2*padding);
+
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+
+    const label = `${ev.kind} ${ev.time.toLocaleTimeString('en-NZ',{
+      timeZone: nzTZ, hour: '2-digit', minute: '2-digit', hour12: false
+    })}`;
+    ctx.fillText(label, x, 4);
+  }
+  ctx.restore();
 }
 
 /* ===== YouTube API ===== */
@@ -432,7 +553,8 @@ function createTideChart(tideData, hours, highs, lows) {
   canvas.height = 160;
   canvas.style.cssText = 'width: 100%; height: 160px; display: block;';
   chartContainer.appendChild(canvas);
-
+/* NEW: remember the latest tide chart canvas for overlays */
+  tideCanvas = canvas;
   drawTideCurve(canvas, tideData, hours, highs, lows);
   return chartContainer;
 }
@@ -512,16 +634,24 @@ function buildEnhancedTable(d) {
   // rebuild main table
   buildTable(d);
 
-  // add tide chart under the table
+  // add tide chart under the table, inside the scroll container
   const tableContainer = document.querySelector('.table-scroll');
-  if (!tableContainer || !tableContainer.parentNode) return;
+  if (!tableContainer) return;
 
-  // Remove any existing tide charts
-  document.querySelectorAll('.tide-chart').forEach(el => el.remove());
+  // Remove any existing tide charts (only inside the scroller)
+  tableContainer.querySelectorAll('.tide-chart').forEach(el => el.remove());
 
+  // Create and insert the chart at the top of the scroller so it scrolls with the table
   const tideChart = createTideChart(d.tide, d.labelHours, d.tidesDaily.highs, d.tidesDaily.lows);
-  tableContainer.parentNode.insertBefore(tideChart, tableContainer.nextSibling);
+  tableContainer.insertAdjacentElement('afterbegin', tideChart);
+
+  // Remember current state for redraws after resize
+  tideState = { tide: d.tide, hours: d.labelHours, highs: d.tidesDaily.highs, lows: d.tidesDaily.lows };
+
+  // Size the canvas to match the full table width and redraw once
+  sizeTideCanvasToTable();
 }
+
 
 function updateChips(d) {
   const sunChip = document.getElementById("sunChip");
@@ -654,7 +784,8 @@ async function refresh(){
 
     buildEnhancedTable(d);
     updateChips(d);
-
+// ⬇️ NEW: overlay local NIWA High/Low markers on that tide chart
+    await loadLocalTideMarkers(d);
     const realMarineHours = d.wave.filter(v => v != null && !d.offline).length;
     if (status) {
       if (d.offline) status.textContent = "📁 Offline";
@@ -669,7 +800,12 @@ async function refresh(){
 
     buildEnhancedTable(d);
     updateChips(d);
-    if (status) status.textContent = "📁 Offline";
+   
+   // Even in fallback mode, try to draw NIWA markers if the worker is reachable
+    try { await loadLocalTideMarkers(d); } catch (_){}
+  
+     
+     if (status) status.textContent = "📁 Offline";
   } finally {
     if (updatedAt) updatedAt.textContent = new Date().toLocaleTimeString();
   }
@@ -725,7 +861,11 @@ window.addEventListener("load", () => {
   loadYouTubeAPI();
   updateToggleButton();
 
+  // resize handler so the tide canvas always matches the table width
+  window.addEventListener('resize', sizeTideCanvasToTable);
+
   // first draw + refresh every 30 min
   refresh();
   setInterval(refresh, 30*60*1000);
 });
+
