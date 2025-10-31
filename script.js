@@ -582,6 +582,12 @@ function sizeTideCanvasToTable(){
   const firstBodyTh = scroller.querySelector('#tbody tr:first-child th:first-child');
   const col0Width = (firstHeadTh?.offsetWidth || firstBodyTh?.offsetWidth || 40);
   leftPad = Math.max(30, col0Width);
+// Ensure the blue bordered wrapper matches the true table width (fixes iPhone shrink)
+const container = tideCanvas.closest('.tide-chart');
+if (container) {
+  container.style.width = contentWidth + 'px';
+  container.style.minWidth = contentWidth + 'px';
+}
 
   // set wrapper width too (fixes iPhone border shrink)
   const container = tideCanvas.closest('.tide-chart');
