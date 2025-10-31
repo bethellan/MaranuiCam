@@ -6,7 +6,8 @@
   <title>Maranui Webcam v6.4.10 – Surf & Airport Cams</title>
   <meta name="theme-color" content="#e63946" />
   <link rel="stylesheet" href="style.css?v=6.4.4" />
-  <script defer src="script.js?v=6.4.10"></script>
+ <script src="script.js?v=6.5.1" defer></script>
+
 </head>
 <body>
   <header class="site-header" role="banner">
@@ -69,12 +70,13 @@
         <button id="nextDay" class="nav-btn">Next Day →</button>
       </div>
 
-      <div class="table-scroll" role="region" aria-live="polite">
-        <table id="condTable" class="cond-table" aria-describedby="tableHelp">
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+    <div class="table-scroll" role="region" aria-live="polite" aria-busy="true">
+  <table id="condTable" class="cond-table" aria-describedby="tableHelp">
+    <thead id="thead"></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
       <div class="status-row">
         <span id="dataStatus" class="status-chip">—</span>
         <span id="updatedAt" class="status-chip faint" aria-live="polite">—</span>
@@ -142,6 +144,9 @@
         <li><strong>Rain (mm/hr):</strong> Precipitation intensity - from Open-Meteo Forecast API</li>
         <li><strong>Tide (m):</strong> Tide height relative to mean sea level - from Open-Meteo Marine API</li>
       </ul>
+
+     <p><strong>Tides:</strong> Tide curve is modelled locally for Lyall Bay, with vertical High/Low markers fetched from NIWA (via a lightweight proxy). If a WorldTides API key is configured, measured heights override the model.</p>
+
 
       <h4>Surfability Score (1-10)</h4>
       <p>The surfability score is calculated using this algorithm:</p>
