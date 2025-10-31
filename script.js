@@ -1,14 +1,15 @@
 /* =========================================================================
-   MaranuiCam v6.5.1 — Multi-source data table + Tide Chart
-   Requirements in your HTML (by id/class):
-   - #liveFrame (iframe), #camToggle (button), #dateLabel, #dayTitle
+   MaranuiCam v6.5.1 — Multi-source data table + Tide Chart (Lyall Bay)
+   Expects in HTML:
+   - #liveFrame, #camToggle, #dateLabel, #dayTitle
    - #prevDay, #nextDay, #dataStatus, #updatedAt
    - #sunChip, #tideChip, #scoreBadge
-   - a table with <thead id="thead"> and <tbody id="tbody">
-   - a wrapper around the table with class ".table-scroll" (for tide chart insert)
+   - <div class="table-scroll"><table><thead id="thead">..</thead><tbody id="tbody">..</tbody></table></div>
    ========================================================================= */
 
 const LAT = -41.327, LON = 174.794;
+const nzTZ = "Pacific/Auckland";
+const WORKER_URL = "https://niwa-tides.bethellan.workers.dev/niwa-tides";
 
 /* ===== Cameras ===== */
 const CAMS = [
@@ -19,82 +20,40 @@ const CAMS = [
   { id: "lookout", titleLeft: "🌊 Lookout Cam", titleRight: "🏖️ Surf Cam",
     url: "https://www.youtube.com/embed/BfCQIhmK6OE?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1" }
 ];
-
-let currentCam = 0;
-let frame, camToggle;
+let frame, camToggle, currentCam = 0;
 let youtubeAPIReady = false, player;
 
-/* workers */
+/* ===== Tide chart state ===== */
+let tideCanvas = null;            // canvas element currently drawn
+let tideState = null;             // { tide, hours, highs, lows }
+let niwaEvents = [];              // [{ time: Date, kind: 'H'|'L' }]
+let leftPad = 40;                 // dynamic left padding to align with first table column
 
-const WORKER_URL = "https://niwa-tides.bethellan.workers.dev/niwa-tides";
-const nzTZ = "Pacific/Auckland";
-/* NEW: keep a handle to the tide chart canvas */
-let tideCanvas = null;
-let tideState = null;      // { tide, hours, highs, lows }
-let niwaEvents = [];       // last fetched NIWA H/L events
 /* ===== iOS sniff (kept for future) ===== */
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-
-/* date helper */
+/* ===== Date/time helpers ===== */
 function ymdNZ(d){
   const p = new Intl.DateTimeFormat("en-CA", {
     timeZone: nzTZ, year: "numeric", month: "2-digit", day: "2-digit"
-  }).formatToParts(d).reduce((o,p)=> (o[p.type]=p.value, o), {});
+  }).formatToParts(d).reduce((o,part)=> (o[part.type]=part.value, o), {});
   return `${p.year}-${p.month}-${p.day}`;
 }
-
-async function loadLocalTideMarkers(d, lat = LAT, lon = LON){
-  const hours = d.labelHours;
-  const daysNeeded = Math.ceil(hours.length / 24);
-
-  const q = new URLSearchParams({
-    lat:  lat.toFixed(3),
-    long: lon.toFixed(3),
-    startDate: ymdNZ(hours[0]),
-    days: String(daysNeeded),
-    interval: "10",
-    datum: "LAT"
-  });
-
-  const r = await fetch(`${WORKER_URL}?${q}`);
-  if (!r.ok){
-    console.error("NIWA proxy error", r.status);
-    return;
-  }
-
-  const { events } = await r.json(); // [{ time: ISO-UTC, kind: 'H'|'L', height }]
-  const localEvents = events.map(e => ({ time: new Date(e.time), kind: e.kind }));
-
-  // Remember for future redraws (resizes, tab changes)
-  niwaEvents = localEvents;
-
-  // Draw vertical H/L lines over the tide chart that’s already rendered
-  drawNiwaMarkersOnTideChart(localEvents, hours[0], hours[hours.length - 1]);
-
-  // Optional console check in NZ time
-  for (const ev of localEvents){
-    const tm = new Intl.DateTimeFormat("en-NZ", {
-      timeZone: nzTZ, hour: "2-digit", minute: "2-digit", hour12: false
-    }).format(ev.time);
-    console.debug(`[TIDE] ${ev.kind} @ ${tm} NZ`);
-  }
+function toLocalHourKey(date){
+  const d = new Date(date.getTime() - date.getTimezoneOffset()*60000);
+  return d.toISOString().slice(0,13) + ":00";
 }
-
-
-
+function fmtHM(date){ return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }); }
 
 /* ===== Day handling ===== */
-let dayOffset = 0; // 0 = today, -1 = yesterday, +1 = tomorrow
+let dayOffset = 0; // 0 today, -1 yesterday, +1 tomorrow
 const MAX_PAST_DAYS = 7, MAX_FUTURE_DAYS = 7;
-
 function getBaseDate(offsetDays = 0) {
   const base = new Date();
   base.setHours(0, 0, 0, 0);
   base.setDate(base.getDate() + offsetDays);
   return base;
 }
-
 function updateDayTitle() {
   const title = document.getElementById("dayTitle");
   if (!title) return;
@@ -108,11 +67,7 @@ function updateDayTitle() {
   title.textContent = `24-Hour Forecast — Lyall Bay ${prefix} ${label}`;
 }
 
-/* ===== Helpers ===== */
-function toLocalHourKey(date){
-  const d = new Date(date.getTime() - date.getTimezoneOffset()*60000);
-  return d.toISOString().slice(0,13) + ":00";
-}
+/* ===== Small helpers ===== */
 function degToCompass(num) {
   const arr = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
   return arr[Math.round(num / 22.5) % 16];
@@ -125,24 +80,14 @@ function windColor(speed) {
   if (speed <= 35) return "strong";
   return "very-strong";
 }
-function fmtHM(date){ return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }); }
-
 function densify(arr) {
   const out = (arr || []).slice();
   let last = null;
-  for (let i=0;i<out.length;i++){
-    if (out[i] == null || Number.isNaN(out[i])) out[i] = last;
-    else last = out[i];
-  }
-  for (let i=out.length-1;i>=0;i--){
-    if (out[i] == null || Number.isNaN(out[i])) out[i] = (i<out.length-1 ? out[i+1] : 0);
-  }
+  for (let i=0;i<out.length;i++) out[i] = (out[i] == null || Number.isNaN(out[i])) ? last : (last = out[i]);
+  for (let i=out.length-1;i>=0;i--) if (out[i] == null || Number.isNaN(out[i])) out[i] = (i<out.length-1 ? out[i+1] : 0);
   return out.map(v => (v == null || Number.isNaN(v)) ? 0 : v);
 }
-function clamp(v, min, max){
-  if (v == null || Number.isNaN(v)) return v;
-  return Math.min(max, Math.max(min, v));
-}
+function clamp(v, min, max){ return (v == null || Number.isNaN(v)) ? v : Math.min(max, Math.max(min, v)); }
 function validateDataset(data){
   data.temp = densify(data.temp).map(v => clamp(v, -5, 40));
   data.feelsLike = densify(data.feelsLike).map(v => clamp(v, -5, 40));
@@ -158,70 +103,6 @@ function validateDataset(data){
   data.tide = densify(data.tide).map(v => clamp(v, -5, 5));
   data.waterTemp = densify(data.waterTemp).map(v => clamp(v, 0, 30));
   return data;
-}
-
-function sizeTideCanvasToTable(){
-  if (!tideCanvas) return;
-
-  const scroller = document.querySelector('.table-scroll');
-  if (!scroller) return;
-
-  const table = scroller.querySelector('table');
-  // Use the table’s full scroll width so the canvas columns align and scroll together
-  const totalWidth = table ? table.scrollWidth : scroller.clientWidth;
-
-  // Match canvas pixel size to content width
-  tideCanvas.width = totalWidth;
-  tideCanvas.style.width = totalWidth + 'px';
-
-  // Keep height consistent with createTideChart
-  tideCanvas.height = 160;
-  tideCanvas.style.height = '160px';
-
-  // Redraw the tide curve
-  if (tideState){
-    drawTideCurve(tideCanvas, tideState.tide, tideState.hours, tideState.highs, tideState.lows);
-  }
-
-  // Re-overlay NIWA H/L markers if we have them
-  if (niwaEvents.length && tideState && tideState.hours?.length){
-    const hours = tideState.hours;
-    drawNiwaMarkersOnTideChart(niwaEvents, hours[0], hours[hours.length - 1]);
-  }
-}
-
-function drawNiwaMarkersOnTideChart(events, startTime, endTime){
-  if (!tideCanvas) return;
-  const ctx = tideCanvas.getContext('2d');
-  const width = tideCanvas.width, height = tideCanvas.height;
-  const padding = 40; // must match drawTideCurve
-
-  const t0 = startTime.getTime();
-  const t1 = endTime.getTime();
-  const span = t1 - t0 || 1;
-
-  ctx.save();
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4,4]);
-  ctx.strokeStyle = 'rgba(0,0,0,.45)';
-  ctx.fillStyle = 'rgba(0,0,0,.75)';
-  ctx.textAlign = 'center';
-  ctx.font = '10px system-ui';
-
-  for (const ev of events){
-    const te = ev.time.getTime();
-    if (te < t0 || te > t1) continue;
-    const frac = (te - t0) / span;
-    const x = padding + frac * (width - 2*padding);
-
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-
-    const label = `${ev.kind} ${ev.time.toLocaleTimeString('en-NZ',{
-      timeZone: nzTZ, hour: '2-digit', minute: '2-digit', hour12: false
-    })}`;
-    ctx.fillText(label, x, 4);
-  }
-  ctx.restore();
 }
 
 /* ===== YouTube API ===== */
@@ -280,7 +161,7 @@ async function fetchEnhancedData(offsetDays = 0) {
   try {
     const [openMeteoData, worldTidesData] = await Promise.allSettled([
       fetchOpenMeteoData(start, end, base),
-      fetchWorldTidesData(base) // returns null if no API key / fails
+      fetchWorldTidesData(base)
     ]);
 
     const primaryData = openMeteoData.value || generateFallbackData(base);
@@ -301,11 +182,11 @@ async function fetchEnhancedData(offsetDays = 0) {
 async function fetchOpenMeteoData(start, end, baseDate) {
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
     `&hourly=temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,rain,showers` +
-    `&daily=sunrise,sunset&timezone=Pacific/Auckland&start_date=${start}&end_date=${end}&windspeed_unit=kmh`;
+    `&daily=sunrise,sunset&timezone=${encodeURIComponent(nzTZ)}&start_date=${start}&end_date=${end}&windspeed_unit=kmh`;
 
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}` +
     `&hourly=wave_height,wave_period,wave_direction,sea_surface_temperature` +
-    `&timezone=Pacific/Auckland&start_date=${start}&end_date=${end}`;
+    `&timezone=${encodeURIComponent(nzTZ)}&start_date=${start}&end_date=${end}`;
 
   const [forecastRes, marineRes] = await Promise.allSettled([ fetch(forecastUrl), fetch(marineUrl) ]);
   const forecastData = forecastRes.value?.ok ? await forecastRes.value.json() : null;
@@ -355,7 +236,7 @@ async function fetchOpenMeteoData(start, end, baseDate) {
       }
     }
 
-    // fallbacks (kept light so the table always fills)
+    // light fallbacks
     if (data.temp[i] == null)      data.temp[i]      = 15 + Math.sin(i*0.26)*3 + (Math.random()*2 - 1);
     if (data.feelsLike[i] == null) data.feelsLike[i] = (data.temp[i] || 15) - 1 + (Math.random()*2 - 1);
     if (data.humidity[i] == null)  data.humidity[i]  = 70 + Math.sin(i*0.3)*15 + (Math.random()*10 - 5);
@@ -403,7 +284,7 @@ async function fetchWorldTidesData(baseDate) {
   return null;
 }
 
-/* ===== Tide model (fallback / shaping) ===== */
+/* ===== Tide model (fallback) ===== */
 function calculateRealisticTides(hours) {
   if (!hours || !hours.length) return [];
   const epoch = new Date('2025-01-01T00:00:00+13:00').getTime();
@@ -430,11 +311,11 @@ function findTideExtremes(tideData, hours) {
     const prev2 = tideData[i-2], prev1 = tideData[i-1];
     const curr = tideData[i];
     const next1 = tideData[i+1], next2 = tideData[i+2];
-    if (curr > prev2 && curr > prev1 && curr > next1 && curr > next2) {
+    if (curr > prev2 && curr > prev1 && curr > next1 && next2 != null && curr > next2) {
       const avg = (prev2 + prev1 + next1 + next2) / 4;
       if (curr - avg > 0.1) highs.push({ time: hours[i], height: curr });
     }
-    if (curr < prev2 && curr < prev1 && curr < next1 && curr < next2) {
+    if (curr < prev2 && curr < prev1 && curr < next1 && next2 != null && curr < next2) {
       const avg = (prev2 + prev1 + next1 + next2) / 4;
       if (avg - curr > 0.1) lows.push({ time: hours[i], height: curr });
     }
@@ -456,10 +337,7 @@ function isNight(d, h) {
 function buildTable(d) {
   const thead = document.getElementById("thead");
   const tbody = document.getElementById("tbody");
-  if (!thead || !tbody) {
-    console.warn("Missing #thead or #tbody in DOM");
-    return;
-  }
+  if (!thead || !tbody) return;
   thead.innerHTML = tbody.innerHTML = "";
 
   const trH = document.createElement("tr");
@@ -553,7 +431,6 @@ function createTideChart(tideData, hours, highs, lows) {
   canvas.height = 160;
   canvas.style.cssText = 'width: 100%; height: 160px; display: block;';
   chartContainer.appendChild(canvas);
-/* NEW: remember the latest tide chart canvas for overlays */
   tideCanvas = canvas;
   drawTideCurve(canvas, tideData, hours, highs, lows);
   return chartContainer;
@@ -562,7 +439,7 @@ function createTideChart(tideData, hours, highs, lows) {
 function drawTideCurve(canvas, tideData, hours, highs, lows) {
   const ctx = canvas.getContext('2d');
   canvas.width = canvas.width; // reset
-  const width = canvas.width, height = canvas.height, padding = 40;
+  const width = canvas.width, height = canvas.height, padding = leftPad;
 
   const minTide = Math.min(...tideData);
   const maxTide = Math.max(...tideData);
@@ -574,10 +451,10 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   ctx.textAlign = 'center';
 
   for (let i = 0; i <= 4; i++) {
-    const y = padding + (height - 2 * padding) * (1 - i / 4);
+    const y = 40 + (height - 80) * (1 - i / 4);
     const value = minTide + (range * i / 4);
-    ctx.fillText(value.toFixed(1) + 'm', 25, y + 3);
-    ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+    ctx.fillText(value.toFixed(1) + 'm', Math.max(25, padding - 10), y + 3);
+    ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - 40, y); ctx.stroke();
   }
 
   ctx.beginPath();
@@ -585,13 +462,13 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   ctx.lineWidth = 3;
   ctx.fillStyle = '#457b9d20';
   tideData.forEach((tide, i) => {
-    const x = padding + (i / (tideData.length - 1)) * (width - 2 * padding);
-    const y = padding + (height - 2 * padding) * (1 - (tide - minTide) / range);
+    const x = padding + (i / (tideData.length - 1)) * (width - padding - 40);
+    const y = 40 + (height - 80) * (1 - (tide - minTide) / range);
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   });
   ctx.stroke();
-  ctx.lineTo(width - padding, height - padding);
-  ctx.lineTo(padding, height - padding);
+  ctx.lineTo(width - 40, height - 40);
+  ctx.lineTo(padding, height - 40);
   ctx.closePath();
   ctx.fill();
 
@@ -600,8 +477,8 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   highs.forEach(tide => {
     const hourIndex = hours.findIndex(h => h.getTime() === tide.time.getTime());
     if (hourIndex !== -1) {
-      const x = padding + (hourIndex / (tideData.length - 1)) * (width - 2 * padding);
-      const y = padding + (height - 2 * padding) * (1 - (tide.height - minTide) / range);
+      const x = padding + (hourIndex / (tideData.length - 1)) * (width - padding - 40);
+      const y = 40 + (height - 80) * (1 - (tide.height - minTide) / range);
       ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
       ctx.fillText('High', x, y - 12);
       ctx.fillText(tide.height.toFixed(1) + 'm', x, y - 24);
@@ -612,8 +489,8 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   lows.forEach(tide => {
     const hourIndex = hours.findIndex(h => h.getTime() === tide.time.getTime());
     if (hourIndex !== -1) {
-      const x = padding + (hourIndex / (tideData.length - 1)) * (width - 2 * padding);
-      const y = padding + (height - 2 * padding) * (1 - (tide.height - minTide) / range);
+      const x = padding + (hourIndex / (tideData.length - 1)) * (width - padding - 40);
+      const y = 40 + (height - 80) * (1 - (tide.height - minTide) / range);
       ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
       ctx.fillText('Low', x, y + 20);
       ctx.fillText(tide.height.toFixed(1) + 'm', x, y + 32);
@@ -624,35 +501,98 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   ctx.textAlign = 'center';
   ctx.font = '11px system-ui';
   for (let i = 0; i < hours.length; i += 3) {
-    const x = padding + (i / (hours.length - 1)) * (width - 2 * padding);
+    const x = padding + (i / (hours.length - 1)) * (width - padding - 40);
     const time = hours[i].toLocaleTimeString([], { hour: '2-digit' });
     ctx.fillText(time, x, height - 15);
   }
 }
 
+/* Overlay NIWA High/Low markers */
+function drawNiwaMarkersOnTideChart(events, startTime, endTime){
+  if (!tideCanvas) return;
+  const ctx = tideCanvas.getContext('2d');
+  const width = tideCanvas.width, height = tideCanvas.height;
+  const padding = leftPad;
+
+  const t0 = startTime.getTime();
+  const t1 = endTime.getTime();
+  const span = t1 - t0 || 1;
+
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(0,0,0,.45)';
+  ctx.fillStyle = 'rgba(0,0,0,.75)';
+  ctx.textAlign = 'center';
+  ctx.font = '10px system-ui';
+
+  for (const ev of events){
+    const te = ev.time.getTime();
+    if (te < t0 || te > t1) continue;
+    const frac = (te - t0) / span;
+    const x = padding + frac * (width - padding - 40);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+
+    const label = `${ev.kind} ${ev.time.toLocaleTimeString('en-NZ',{
+      timeZone: nzTZ, hour: '2-digit', minute: '2-digit', hour12: false
+    })}`;
+    ctx.fillText(label, x, 12);
+  }
+  ctx.restore();
+}
+
+/* Size the tide canvas to the full table width, align left pad, redraw */
+function sizeTideCanvasToTable(){
+  if (!tideCanvas) return;
+
+  const scroller = document.querySelector('.table-scroll');
+  if (!scroller) return;
+
+  const table = scroller.querySelector('table');
+  const contentWidth = table ? table.scrollWidth : (scroller.scrollWidth || scroller.clientWidth);
+
+  if (!contentWidth) { setTimeout(sizeTideCanvasToTable, 50); return; }
+
+  // Measure first column to align chart axis with "Metric" header
+  const firstHeadTh = scroller.querySelector('#thead th:first-child');
+  const firstBodyTh = scroller.querySelector('#tbody tr:first-child th:first-child');
+  const col0Width = (firstHeadTh?.offsetWidth || firstBodyTh?.offsetWidth || 40);
+  leftPad = Math.max(30, col0Width);
+
+  tideCanvas.width = contentWidth;
+  tideCanvas.style.width = contentWidth + 'px';
+  tideCanvas.height = 160;
+  tideCanvas.style.height = '160px';
+
+  if (tideState){
+    drawTideCurve(tideCanvas, tideState.tide, tideState.hours, tideState.highs, tideState.lows);
+  }
+  if (niwaEvents?.length && tideState?.hours?.length){
+    const hours = tideState.hours;
+    drawNiwaMarkersOnTideChart(niwaEvents, hours[0], hours[hours.length - 1]);
+  }
+}
+
+/* Build the table and insert the tide chart INSIDE the scroller so it scrolls with columns */
 function buildEnhancedTable(d) {
-  // rebuild main table
   buildTable(d);
 
-  // add tide chart under the table, inside the scroll container
-  const tableContainer = document.querySelector('.table-scroll');
-  if (!tableContainer) return;
+  const scroller = document.querySelector('.table-scroll');
+  if (!scroller) return;
 
-  // Remove any existing tide charts (only inside the scroller)
-  tableContainer.querySelectorAll('.tide-chart').forEach(el => el.remove());
+  // Remove any old chart (only inside the scroller)
+  scroller.querySelectorAll('.tide-chart').forEach(el => el.remove());
 
-  // Create and insert the chart at the top of the scroller so it scrolls with the table
+  // Insert chart as first child so it scrolls horizontally with the table
   const tideChart = createTideChart(d.tide, d.labelHours, d.tidesDaily.highs, d.tidesDaily.lows);
-  tableContainer.insertAdjacentElement('afterbegin', tideChart);
+  scroller.insertAdjacentElement('afterbegin', tideChart);
 
-  // Remember current state for redraws after resize
+  // Remember state and align sizes
   tideState = { tide: d.tide, hours: d.labelHours, highs: d.tidesDaily.highs, lows: d.tidesDaily.lows };
-
-  // Size the canvas to match the full table width and redraw once
   sizeTideCanvasToTable();
 }
 
-
+/* ===== Chips ===== */
 function updateChips(d) {
   const sunChip = document.getElementById("sunChip");
   if (sunChip) sunChip.innerHTML = `🌅 ${fmtHM(d.sunrise)}  🌇 ${fmtHM(d.sunset)}`;
@@ -666,7 +606,7 @@ function updateChips(d) {
   }
 }
 
-/* ===== Scoring ===== */
+/* ===== Surfability score ===== */
 function score(wave, wind, rain, dir, wavePeriod, waveDirection, airTemp, waterTemp) {
   if (wave == null) return 0;
   const P = Number.isFinite(wavePeriod) ? wavePeriod : 0;
@@ -742,8 +682,8 @@ function generateFallbackData(base) {
     temp: [], feelsLike: [], humidity: [], pressure: [],
     wind: [], gusts: [], windDir: [], rain: [],
     wave: [], waveP: [], waveD: [], tide: [], waterTemp: [],
-    sunrise: new Date(base.getTime()).setHours && new Date(new Date(base).setHours(7,0,0,0)),
-    sunset: new Date(base.getTime()).setHours && new Date(new Date(base).setHours(19,0,0,0)),
+    sunrise: new Date(new Date(base).setHours(7,0,0,0)),
+    sunset: new Date(new Date(base).setHours(19,0,0,0)),
     tidesDaily: { highs: [], lows: [] },
     offline: true
   };
@@ -770,6 +710,26 @@ function generateFallbackData(base) {
 }
 
 /* ===== Refresh (single entry point) ===== */
+async function loadLocalTideMarkers(d, lat = LAT, lon = LON){
+  const hours = d.labelHours;
+  const daysNeeded = Math.ceil(hours.length / 24);
+  const q = new URLSearchParams({
+    lat:  lat.toFixed(3),
+    long: lon.toFixed(3),
+    startDate: ymdNZ(hours[0]),
+    days: String(daysNeeded),
+    interval: "10",
+    datum: "LAT"
+  });
+  const r = await fetch(`${WORKER_URL}?${q}`);
+  if (!r.ok){ console.error("NIWA proxy error", r.status); return; }
+  const { events } = await r.json();
+  niwaEvents = (events || []).map(e => ({ time: new Date(e.time), kind: e.kind }));
+  if (tideCanvas && hours?.length){
+    drawNiwaMarkersOnTideChart(niwaEvents, hours[0], hours[hours.length - 1]);
+  }
+}
+
 async function refresh(){
   const status = document.getElementById("dataStatus");
   const updatedAt = document.getElementById("updatedAt");
@@ -784,8 +744,10 @@ async function refresh(){
 
     buildEnhancedTable(d);
     updateChips(d);
-// ⬇️ NEW: overlay local NIWA High/Low markers on that tide chart
+
+    // Overlay NIWA High/Low markers
     await loadLocalTideMarkers(d);
+
     const realMarineHours = d.wave.filter(v => v != null && !d.offline).length;
     if (status) {
       if (d.offline) status.textContent = "📁 Offline";
@@ -800,12 +762,9 @@ async function refresh(){
 
     buildEnhancedTable(d);
     updateChips(d);
-   
-   // Even in fallback mode, try to draw NIWA markers if the worker is reachable
-    try { await loadLocalTideMarkers(d); } catch (_){}
-  
-     
-     if (status) status.textContent = "📁 Offline";
+
+    try { await loadLocalTideMarkers(d); } catch(_){}
+    if (status) status.textContent = "📁 Offline";
   } finally {
     if (updatedAt) updatedAt.textContent = new Date().toLocaleTimeString();
   }
@@ -853,7 +812,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 window.addEventListener("load", () => {
-  // Now the DOM is fully laid out — grab elements and start
   frame = document.getElementById("liveFrame");
   camToggle = document.getElementById("camToggle");
   if (camToggle) camToggle.addEventListener("click", switchCam);
@@ -861,11 +819,11 @@ window.addEventListener("load", () => {
   loadYouTubeAPI();
   updateToggleButton();
 
-  // resize handler so the tide canvas always matches the table width
+  // Keep canvas aligned with table on resize/orientation/font reflow
   window.addEventListener('resize', sizeTideCanvasToTable);
+  window.addEventListener('orientationchange', sizeTideCanvasToTable);
 
-  // first draw + refresh every 30 min
+  // First draw + refresh every 30 min
   refresh();
   setInterval(refresh, 30*60*1000);
 });
-
