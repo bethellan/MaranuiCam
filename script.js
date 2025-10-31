@@ -413,6 +413,11 @@ function buildTable(d) {
   }
 }
 
+
+
+
+
+// Replace createTideChart exactly with this
 function createTideChart(tideData, hours, highs, lows) {
   const chartContainer = document.createElement('div');
   chartContainer.className = 'tide-chart';
@@ -427,24 +432,27 @@ function createTideChart(tideData, hours, highs, lows) {
   `;
 
   const canvas = document.createElement('canvas');
-  canvas.width = chartContainer.clientWidth || 800;
-  canvas.height = 160;
-  canvas.style.cssText = 'width: 100%; height: 160px; display: block;';
+  canvas.height = 160; // width is set later in sizeTideCanvasToTable()
+  canvas.style.cssText = 'display:block;';
   chartContainer.appendChild(canvas);
+
   tideCanvas = canvas;
-  drawTideCurve(canvas, tideData, hours, highs, lows);
+  drawTideCurve(canvas, tideData, hours); // dots now drawn from NIWA markers only
   return chartContainer;
 }
 
-function drawTideCurve(canvas, tideData, hours, highs, lows) {
+// Replace drawTideCurve exactly with this
+function drawTideCurve(canvas, tideData, hours) {
   const ctx = canvas.getContext('2d');
-  canvas.width = canvas.width; // reset
-  const width = canvas.width, height = canvas.height, padding = leftPad;
+  // reset/clear
+  canvas.width = canvas.width;
 
+  const width = canvas.width, height = canvas.height, padding = leftPad;
   const minTide = Math.min(...tideData);
   const maxTide = Math.max(...tideData);
   const range = maxTide - minTide || 1;
 
+  // horizontal grid + axis labels
   ctx.strokeStyle = '#4fc3f740';
   ctx.fillStyle = '#1d3557';
   ctx.font = '10px system-ui';
@@ -457,10 +465,12 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
     ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - 40, y); ctx.stroke();
   }
 
+  // tide curve
   ctx.beginPath();
   ctx.strokeStyle = '#457b9d';
   ctx.lineWidth = 3;
   ctx.fillStyle = '#457b9d20';
+
   tideData.forEach((tide, i) => {
     const x = padding + (i / (tideData.length - 1)) * (width - padding - 40);
     const y = 40 + (height - 80) * (1 - (tide - minTide) / range);
@@ -472,31 +482,7 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = '#e63946';
-  ctx.font = '11px system-ui';
-  highs.forEach(tide => {
-    const hourIndex = hours.findIndex(h => h.getTime() === tide.time.getTime());
-    if (hourIndex !== -1) {
-      const x = padding + (hourIndex / (tideData.length - 1)) * (width - padding - 40);
-      const y = 40 + (height - 80) * (1 - (tide.height - minTide) / range);
-      ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
-      ctx.fillText('High', x, y - 12);
-      ctx.fillText(tide.height.toFixed(1) + 'm', x, y - 24);
-    }
-  });
-
-  ctx.fillStyle = '#1d3557';
-  lows.forEach(tide => {
-    const hourIndex = hours.findIndex(h => h.getTime() === tide.time.getTime());
-    if (hourIndex !== -1) {
-      const x = padding + (hourIndex / (tideData.length - 1)) * (width - padding - 40);
-      const y = 40 + (height - 80) * (1 - (tide.height - minTide) / range);
-      ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
-      ctx.fillText('Low', x, y + 20);
-      ctx.fillText(tide.height.toFixed(1) + 'm', x, y + 32);
-    }
-  });
-
+  // x-axis hour labels
   ctx.fillStyle = '#1d3557';
   ctx.textAlign = 'center';
   ctx.font = '11px system-ui';
@@ -507,9 +493,10 @@ function drawTideCurve(canvas, tideData, hours, highs, lows) {
   }
 }
 
-/* Overlay NIWA High/Low markers */
-function drawNiwaMarkersOnTideChart(events, startTime, endTime){
-  if (!tideCanvas) return;
+// Replace drawNiwaMarkersOnTideChart exactly with this
+function drawNiwaMarkersOnTideChart(events, startTime, endTime, tideData, hours){
+  if (!tideCanvas || !events?.length || !hours?.length || !tideData?.length) return;
+
   const ctx = tideCanvas.getContext('2d');
   const width = tideCanvas.width, height = tideCanvas.height;
   const padding = leftPad;
@@ -518,30 +505,68 @@ function drawNiwaMarkersOnTideChart(events, startTime, endTime){
   const t1 = endTime.getTime();
   const span = t1 - t0 || 1;
 
+  // tide range for vertical placement
+  const minTide = Math.min(...tideData);
+  const maxTide = Math.max(...tideData);
+  const range = maxTide - minTide || 1;
+
+  // dedupe by minute & keep at most 4 markers in the window
+  const seen = new Set();
+  const filtered = [];
+  for (const ev of events) {
+    const te = ev.time.getTime();
+    if (te < t0 || te > t1) continue;
+    const key = Math.round(te / 60000);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    filtered.push(ev);
+    if (filtered.length >= 4) break;
+  }
+
   ctx.save();
   ctx.lineWidth = 1;
   ctx.setLineDash([4,4]);
   ctx.strokeStyle = 'rgba(0,0,0,.45)';
-  ctx.fillStyle = 'rgba(0,0,0,.75)';
+  ctx.fillStyle   = 'rgba(0,0,0,.85)';
   ctx.textAlign = 'center';
   ctx.font = '10px system-ui';
 
-  for (const ev of events){
+  for (const ev of filtered){
     const te = ev.time.getTime();
-    if (te < t0 || te > t1) continue;
     const frac = (te - t0) / span;
     const x = padding + frac * (width - padding - 40);
+
+    // vertical dashed line
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
 
-    const label = `${ev.kind} ${ev.time.toLocaleTimeString('en-NZ',{
-      timeZone: nzTZ, hour: '2-digit', minute: '2-digit', hour12: false
-    })}`;
+    // interpolate tide height at exact event time for correct dot Y
+    const idx = (te - hours[0].getTime()) / 3600000;         // fractional hour index
+    const i0 = Math.max(0, Math.floor(idx));
+    const i1 = Math.min(hours.length - 1, Math.ceil(idx));
+    const f  = Math.max(0, Math.min(1, idx - i0));
+    const h0 = tideData[i0], h1 = tideData[i1];
+    const h  = (h0 != null && h1 != null) ? (h0 + (h1 - h0) * f) : tideData[i0] ?? tideData[i1] ?? minTide;
+    const y  = 40 + (height - 80) * (1 - (h - minTide) / range);
+
+    // label
+    const label = `${ev.kind} ${ev.time.toLocaleTimeString('en-NZ',{ timeZone: nzTZ, hour: '2-digit', minute: '2-digit', hour12: false })}`;
     ctx.fillText(label, x, 12);
+
+    // dot (red for High, black for Low)
+    ctx.beginPath();
+    ctx.fillStyle = ev.kind === 'H' ? '#e63946' : '#000000';
+    ctx.arc(x, y, 6, 0, Math.PI*2);
+    ctx.fill();
+
+    // small height label just above/below the dot
+    ctx.fillStyle = 'rgba(0,0,0,.85)';
+    const ty = ev.kind === 'H' ? y - 10 : y + 18;
+    ctx.fillText(`${h.toFixed(1)}m`, x, ty);
   }
   ctx.restore();
 }
 
-/* Size the tide canvas to the full table width, align left pad, redraw */
+// Replace sizeTideCanvasToTable exactly with this
 function sizeTideCanvasToTable(){
   if (!tideCanvas) return;
 
@@ -550,28 +575,44 @@ function sizeTideCanvasToTable(){
 
   const table = scroller.querySelector('table');
   const contentWidth = table ? table.scrollWidth : (scroller.scrollWidth || scroller.clientWidth);
-
   if (!contentWidth) { setTimeout(sizeTideCanvasToTable, 50); return; }
 
-  // Measure first column to align chart axis with "Metric" header
+  // align left pad with "Metric" column
   const firstHeadTh = scroller.querySelector('#thead th:first-child');
   const firstBodyTh = scroller.querySelector('#tbody tr:first-child th:first-child');
   const col0Width = (firstHeadTh?.offsetWidth || firstBodyTh?.offsetWidth || 40);
   leftPad = Math.max(30, col0Width);
 
+  // set wrapper width too (fixes iPhone border shrink)
+  const container = tideCanvas.closest('.tide-chart');
+  if (container) {
+    container.style.width = contentWidth + 'px';
+    container.style.minWidth = contentWidth + 'px';
+  }
+
+  // size canvas to match table content width
   tideCanvas.width = contentWidth;
   tideCanvas.style.width = contentWidth + 'px';
   tideCanvas.height = 160;
   tideCanvas.style.height = '160px';
 
   if (tideState){
-    drawTideCurve(tideCanvas, tideState.tide, tideState.hours, tideState.highs, tideState.lows);
+    drawTideCurve(tideCanvas, tideState.tide, tideState.hours);
   }
   if (niwaEvents?.length && tideState?.hours?.length){
-    const hours = tideState.hours;
-    drawNiwaMarkersOnTideChart(niwaEvents, hours[0], hours[hours.length - 1]);
+    drawNiwaMarkersOnTideChart(
+      niwaEvents,
+      tideState.hours[0],
+      tideState.hours[tideState.hours.length - 1],
+      tideState.tide,
+      tideState.hours
+    );
   }
 }
+
+
+
+
 
 /* Build the table and insert the tide chart INSIDE the scroller so it scrolls with columns */
 function buildEnhancedTable(d) {
